@@ -1,0 +1,36 @@
+import { Schema, model, Document } from "mongoose";
+
+export interface IUser extends Document {
+  email: string;
+  passwordHash?: string;
+  name?: string;
+  bio?: string;
+  collegeId?: string;
+  collegeName?: string;
+  avatarUrl?: string;
+  role: "student" | "admin";
+  verified?: boolean;
+  followers: string[];
+  following: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  lastActive?: Date;
+}
+
+const UserSchema = new Schema<IUser>({
+  email: { type: String, required: true, unique: true, index: true },
+  passwordHash: { type: String },
+  name: { type: String },
+  bio: { type: String },
+  collegeId: { type: String, index: true },
+  collegeName: { type: String },
+  avatarUrl: { type: String },
+  role: { type: String, enum: ["student", "admin"], default: "student" },
+  verified: { type: Boolean, default: false },
+  followers: { type: [String], default: [] },
+  following: { type: [String], default: [] },
+  lastActive: { type: Date, default: Date.now },
+}, { timestamps: true });
+
+export const UserModel = model<IUser>("User", UserSchema);
+export default UserModel;

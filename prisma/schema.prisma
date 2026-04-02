@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:password@localhost:5432/campusdb"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  username        String    @unique
+  avatar          String?
+  bio             String?
+  phone           String?
+  collegeId       String?   // College ID for verification
+  institutionId   String?
+  institution     Institution? @relation(fields: [institutionId], references: [id])
+  department      String?
+  graduationYear  Int?
+  verificationLevel Int     @default(1)
+  isVerified      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  posts           Post[]
+  stories         Story[]
+  comments        Comment[]
+  likes           Like[]
+  saves           Save[]
+  messages        Message[]
+  conversationParticipants ConversationParticipant[]
+  roomMembers     RoomMember[]
+  sentFriendRequests   FriendRequest[] @relation("SentRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedRequests")
+  notes           Note[]
+  events          Event[]
+  clubMembers     ClubMember[]
+  jobs            Job[]
+  lostItems       LostItem[]
+  marketplaceItems MarketplaceItem[]
+  notifications   Notification[]
+  reports         Report[] @relation("Reporter")
+  reportedUsers   Report[] @relation("Reported")
+}
+
+model Institution {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // "college" or "school"
+  city        String
+  state       String
+  domain      String?
+  createdAt   DateTime @default(now())
+  
+  users       User[]
+  batches     Batch[]
+  departments Department[]
+  rooms       Room[]
+  events      Event[]
+  clubs       Club[]
+  notes       Note[]
+  jobs        Job[]
+  lostItems   LostItem[]
+  marketplaceItems MarketplaceItem[]
+}
+
+model Batch {
+  id             String   @id @default(cuid())
+  name           String
+  graduationYear Int
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  createdAt      DateTime @default(now())
+
+  rooms          Room[]
+  posts          Post[]
+  notes          Note[]
+}
+
+model Department {
+  id             String   @id @default(cuid())
+  name           String
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  createdAt      DateTime @default(now())
+
+  batches        Batch[]
+  rooms          Room[]
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  content     String
+  images      String?  // JSON array of image URLs
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  batchId     String?
+  batch       Batch?   @relation(fields: [batchId], references: [id])
+  roomId      String?
+  room        Room?    @relation(fields: [roomId], references: [id])
+  clubId      String?
+  club        Club?    @relation(fields: [clubId], references: [id])
+  isAnonymous Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  comments    Comment[]
+  likes       Like[]
+  saves       Save[]
+}
+
+model Story {
+  id          String   @id @default(cuid())
+  image       String
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+}
+
+model Comment {
+  id          String   @id @default(cuid())
+  content     String
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id])
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  parentId    String?
+  parent      Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentReplies")
+  createdAt   DateTime @default(now())
+}
+
+model Like {
+  id          String   @id @default(cuid())
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model Save {
+  id          String   @id @default(cuid())
+  postId      String
+  post        Post     @relation(fields: [postId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model Conversation {
+  id          String   @id @default(cuid())
+  type        String   @default("direct") // "direct" or "group"
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  role           String   @default("member") // "member" or "admin"
+  joinedAt       DateTime @default(now())
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  content        String
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User     @relation(fields: [senderId], references: [id])
+  createdAt      DateTime @default(now())
+}
+
+model Room {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  type           String   // "college", "school", "hostel", "department", "class", "event", "club", "study", "placement", "internship", "buysell"
+  institutionId String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  batchId        String?
+  batch          Batch?   @relation(fields: [batchId], references: [id])
+  departmentId   String?
+  department     Department? @relation(fields: [departmentId], references: [id])
+  clubId         String?
+  club           Club?    @relation(fields: [clubId], references: [id])
+  eventId        String?
+  event          Event?   @relation(fields: [eventId], references: [id])
+  isPublic       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  posts          Post[]
+  members       RoomMember[]
+}
+
+model RoomMember {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room    @relation(fields: [roomId], references: [id])
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  role      String   @default("member")
+  joinedAt  DateTime @default(now())
+
+  @@unique([roomId, userId])
+}
+
+model Club {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  logo           String?
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  members        ClubMember[]
+  posts          Post[]
+  events         Event[]
+  rooms          Room[]
+}
+
+model ClubMember {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club    @relation(fields: [clubId], references: [id])
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  role      String   @default("member") // "member", "admin", "president"
+  joinedAt  DateTime @default(now())
+
+  @@unique([clubId, userId])
+}
+
+model Event {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  image          String?
+  location       String?
+  startDate      DateTime
+  endDate        DateTime?
+  organizerId    String
+  organizer      User     @relation(fields: [organizerId], references: [id])
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  clubId         String?
+  club           Club?    @relation(fields: [clubId], references: [id])
+  isPublic       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  rooms          Room[]
+}
+
+model Note {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  fileUrl        String
+  subject        String
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  batchId        String?
+  batch          Batch?   @relation(fields: [batchId], references: [id])
+  uploadedById   String
+  uploadedBy     User     @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Job {
+  id             String   @id @default(cuid())
+  title          String
+  company        String?
+  description    String
+  jobType        String   // "internship", "full-time", "part-time"
+  location       String?
+  salary         String?
+  applyLink      String?
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  postedById     String
+  postedBy       User     @relation(fields: [postedById], references: [id])
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime?
+}
+
+model LostItem {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  image          String?
+  location       String?
+  status         String   @default("lost") // "lost", "found", "claimed"
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  postedById     String
+  postedBy       User     @relation(fields: [postedById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model MarketplaceItem {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  price          Float
+  images         String?  // JSON array
+  category       String   // "books", "electronics", "others"
+  condition      String?
+  institutionId  String
+  institution    Institution @relation(fields: [institutionId], references: [id])
+  postedById     String
+  postedBy       User     @relation(fields: [postedById], references: [id])
+  isSold         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model FriendRequest {
+  id          String   @id @default(cuid())
+  senderId    String
+  sender      User     @relation("SentRequests", fields: [senderId], references: [id])
+  receiverId  String
+  receiver    User     @relation("ReceivedRequests", fields: [receiverId], references: [id])
+  status      String   @default("pending") // "pending", "accepted", "rejected"
+  createdAt   DateTime @default(now())
+
+  @@unique([senderId, receiverId])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  type        String   // "like", "comment", "friend_request", "room_message", "event", "job", "mention"
+  message     String
+  link        String?
+  data        Json?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Report {
+  id          String   @id @default(cuid())
+  reporterId  String
+  reporter    User     @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUserId String
+  reportedUser User    @relation("Reported", fields: [reportedUserId], references: [id])
+  type        String   // "user", "post", "comment", "message"
+  content     String?
+  reason      String
+  status      String   @default("pending") // "pending", "reviewed", "resolved"
+  createdAt   DateTime @default(now())
+}
+
+model Otp {
+  id          String   @id @default(cuid())
+  email       String
+  code        String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+}
