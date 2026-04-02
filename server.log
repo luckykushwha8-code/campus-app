@@ -1,0 +1,134 @@
+   ▲ Next.js 15.3.3
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.43.128:3000
+
+ ✓ Starting...
+SyntaxError: Unexpected end of JSON input
+    at JSON.parse (<anonymous>)
+ ✓ Ready in 8.9s
+ ○ Compiling / ...
+Request timed out after 3000ms
+
+Retrying 1/3...
+ ✓ Compiled / in 27.3s (873 modules)
+ GET / 200 in 28777ms
+ GET / 200 in 381ms
+ GET / 200 in 538ms
+ ○ Compiling /explore ...
+ ✓ Compiled /explore in 2.3s (932 modules)
+ GET /explore 200 in 2588ms
+ GET /explore 200 in 81ms
+ GET /explore 200 in 37ms
+ ○ Compiling /messages ...
+ ✓ Compiled /messages in 908ms (946 modules)
+ GET /messages 200 in 1053ms
+ ○ Compiling /rooms ...
+ ✓ Compiled /rooms in 629ms (961 modules)
+ GET /rooms 200 in 733ms
+ GET / 200 in 72ms
+ GET /explore 200 in 70ms
+ GET /messages 200 in 99ms
+ GET /messages 200 in 46ms
+ GET /messages 200 in 37ms
+ ○ Compiling /profile ...
+ ✓ Compiled /profile in 783ms (974 modules)
+ GET /profile 200 in 944ms
+ GET / 200 in 32ms
+ GET /explore 200 in 49ms
+ GET /messages 200 in 33ms
+ GET /rooms 200 in 45ms
+ GET /explore 200 in 53ms
+ GET /messages 200 in 46ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1525ms (978 modules)
+ GET /messages/1 404 in 1659ms
+ GET /messages/2 404 in 298ms
+ GET /messages/2 404 in 485ms
+ GET /messages 200 in 204ms
+ GET /messages/2 404 in 23ms
+ GET /messages/2 404 in 173ms
+ GET /messages 200 in 236ms
+ GET /messages/3 404 in 25ms
+ GET /messages/3 404 in 1381ms
+ GET /messages 200 in 213ms
+ GET /rooms 200 in 153ms
+ ○ Compiling /notes ...
+ ✓ Compiled /notes in 3.3s (982 modules)
+ GET /notes 200 in 3829ms
+ GET /notes 200 in 150ms
+ GET /notes 200 in 233ms
+ ○ Compiling /events ...
+ ✓ Compiled /events in 1719ms (962 modules)
+ GET /events 200 in 2615ms
+ GET /events 200 in 139ms
+ ○ Compiling /placements ...
+ ✓ Compiled /lost-found in 6.4s (974 modules)
+ GET /marketplace 200 in 4414ms
+ GET /placements 200 in 7164ms
+ GET /lost-found 200 in 2733ms
+ ○ Compiling /clubs ...
+ ✓ Compiled /clubs in 3.9s (960 modules)
+ GET /placements 200 in 5584ms
+ GET /clubs 200 in 5595ms
+ GET /events 200 in 2284ms
+ GET /notes 200 in 3571ms
+ GET /explore 200 in 48ms
+ ○ Compiling /messages ...
+ ✓ Compiled /messages in 750ms (580 modules)
+ GET /messages 200 in 1039ms
+ GET /rooms 200 in 63ms
+ GET /messages 200 in 24ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1707ms (981 modules)
+ GET /messages/3 404 in 1932ms
+ GET /messages/3 404 in 29ms
+ GET /messages/3 404 in 674ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1651ms (604 modules)
+ GET / 200 in 1924ms
+ GET / 200 in 84ms
+ GET /messages 200 in 54ms
+ GET /profile 200 in 72ms
+ GET /explore 200 in 52ms
+ ✓ Compiled in 3.4s (994 modules)
+ GET /explore 200 in 335ms
+ ✓ Compiled in 3.3s (1060 modules)
+ GET /explore 200 in 224ms
+ GET /messages 200 in 762ms
+ GET /messages 200 in 181ms
+ GET /messages 200 in 35ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 1629ms (1050 modules)
+ GET /messages/3 404 in 1991ms
+ GET /messages/3 404 in 635ms
+ GET /messages 200 in 286ms
+ ○ Compiling /rooms ...
+ ✓ Compiled /rooms in 1138ms (616 modules)
+ GET /rooms 200 in 1579ms
+ GET /notes 200 in 127ms
+ ✓ Compiled /profile in 488ms (628 modules)
+ GET /profile 200 in 993ms
+ GET / 200 in 153ms
+ GET /messages 200 in 65ms
+ GET /explore 200 in 55ms
+ GET /notes 200 in 49ms
+ GET /events 200 in 75ms
+ ○ Compiling /placements ...
+ ✓ Compiled /placements in 1257ms (615 modules)
+ GET /placements 200 in 1634ms
+ GET /placements 200 in 63ms
+ GET /placements 200 in 63ms
+ GET / 200 in 48ms
+ GET /messages 200 in 44ms
+ ○ Compiling /profile ...
+ ✓ Compiled /profile in 687ms (623 modules)
+ GET /profile 200 in 919ms
+ GET /placements 200 in 57ms
+ ○ Compiling /marketplace ...
+ ✓ Compiled /marketplace in 755ms (625 modules)
+ GET /marketplace 200 in 891ms
+ ✓ Compiled /lost-found in 419ms (628 modules)
+ GET /lost-found 200 in 608ms
+ ○ Compiling /clubs ...
+ ✓ Compiled /clubs in 559ms (631 modules)
+ GET /clubs 200 in 710ms

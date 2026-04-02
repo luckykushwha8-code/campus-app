@@ -1,0 +1,27 @@
+API Contracts (MVP)
+- POST /api/auth/register
+  - body: { email: string, password: string, name?: string, collegeId?: string, collegeName?: string }
+  - response: { ok: boolean, token?: string, user?: { id, email } , error? }
+- POST /api/auth/login
+  - body: { email: string, password: string }
+  - response: { ok: boolean, token?: string, user?: { id, email } , error? }
+- GET /api/user/:id
+  - response: { ok: boolean, user?: object, error? }
+- PUT /api/user/update
+  - body: { userId: string, updates: object }
+- POST /api/posts/create
+  - headers: Authorization: Bearer <JWT>
+  - body: { content: string, images?: string[], audience?: string }
+- GET /api/posts/feed
+  - query: limit (int), cursor (string)
+- POST /api/posts/like
+  - headers: Authorization: Bearer <JWT>
+  - body: { postId: string }
+- POST /api/stories/upload
+  - body: { userId: string, url: string, type: 'image'|'video' }
+- GET /api/stories/feed
+- POST /api/chat/send
+  - headers: Authorization: Bearer <JWT>
+  - body: { conversationId: string, content: string }
+- GET /api/chat/messages?conversationId=&limit=
+- GET /api/notifications?user=
