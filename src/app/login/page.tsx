@@ -117,6 +117,11 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   required
                 />
+                <div className="mt-2 text-right">
+                  <Link className="text-sm font-medium text-[var(--accent)] hover:underline" href="/forgot-password">
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
 
               {error ? (

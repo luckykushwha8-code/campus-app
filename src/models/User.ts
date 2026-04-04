@@ -22,6 +22,8 @@ export interface IUser extends Document {
   verified?: boolean;
   followers: string[];
   following: string[];
+  passwordResetTokenHash?: string;
+  passwordResetExpiresAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   lastActive?: Date;
@@ -49,6 +51,8 @@ const UserSchema = new Schema<IUser>({
   verified: { type: Boolean, default: false },
   followers: { type: [String], default: [] },
   following: { type: [String], default: [] },
+  passwordResetTokenHash: { type: String, default: null },
+  passwordResetExpiresAt: { type: Date, default: null, index: true },
   lastActive: { type: Date, default: Date.now },
 }, { timestamps: true });
 
