@@ -31,7 +31,7 @@ type FeedPost = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, updateUser, logout } = useAppSession();
+  const { user, token, isAuthenticated, updateUser, logout } = useAppSession();
   const [form, setForm] = useState<ProfileForm>({
     name: "",
     bio: "",
@@ -193,6 +193,7 @@ export default function ProfilePage() {
 
       const uploadResponse = await fetch("/api/media/upload", {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: payload,
       });
       const uploadData = await uploadResponse.json();

@@ -1,4 +1,5 @@
-import { getServerSession } from "@/lib/server-auth";
+import { verifyToken } from "@/lib/auth";
+import { getBearerToken, getServerSession } from "@/lib/server-auth";
 import { isMediaStorageConfigured, uploadImageToCloudinary } from "@/lib/media-storage";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
@@ -7,7 +8,11 @@ const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export async function POST(req: Request) {
   try {
     const session = await getServerSession();
-    if (!session?.userId) {
+    const bearerToken = getBearerToken(req);
+    const bearerPayload = bearerToken ? (verifyToken(bearerToken) as { userId?: string } | null) : null;
+    const userId = session?.userId || bearerPayload?.userId;
+
+    if (!userId) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
     }
 
@@ -39,7 +44,7 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const folder = kind === "cover" ? "campuslink/covers" : "campuslink/avatars";
-    const asset = await uploadImageToCloudinary(buffer, folder);
+    const asset = await uploadImageToCloudinary(buffer, folder, file.type);
 
     return new Response(JSON.stringify({ ok: true, asset }), { status: 200 });
   } catch {

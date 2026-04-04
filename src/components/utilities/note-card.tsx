@@ -1,6 +1,6 @@
 "use client";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { FileText, Download, Eye } from "lucide-react";
 
@@ -10,6 +10,9 @@ interface NoteCardProps {
     title: string;
     description?: string;
     subject: string;
+    fileUrl?: string;
+    fileName?: string;
+    fileSize?: number;
     uploadedBy: { name: string };
     downloads: number;
     views: number;
@@ -18,6 +21,8 @@ interface NoteCardProps {
 }
 
 export function NoteCard({ note }: NoteCardProps) {
+  const fileSizeInMb = note.fileSize ? `${(note.fileSize / (1024 * 1024)).toFixed(1)} MB` : "PDF";
+
   return (
     <div className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
@@ -35,18 +40,29 @@ export function NoteCard({ note }: NoteCardProps) {
           <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
             <span>By {note.uploadedBy.name}</span>
             <span>{formatDate(note.createdAt)}</span>
+            <span>{fileSizeInMb}</span>
           </div>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-2">
-        <Button variant="outline" size="sm" className="flex-1 gap-1">
+        <Link
+          href={`/api/notes/${note.id}?action=view`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50"
+        >
           <Eye className="h-3 w-3" />
           {note.views}
-        </Button>
-        <Button size="sm" className="flex-1 gap-1">
+        </Link>
+        <Link
+          href={`/api/notes/${note.id}?action=download`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)]"
+        >
           <Download className="h-3 w-3" />
           {note.downloads}
-        </Button>
+        </Link>
       </div>
     </div>
   );
