@@ -13,9 +13,10 @@ interface ClubCardProps {
     membersCount: number;
     isMember: boolean;
   };
+  onToggleMembership?: (clubId: string) => void;
 }
 
-export function ClubCard({ club }: ClubCardProps) {
+export function ClubCard({ club, onToggleMembership }: ClubCardProps) {
   return (
     <div className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
@@ -33,7 +34,12 @@ export function ClubCard({ club }: ClubCardProps) {
           <Users className="h-4 w-4" />
           {club.membersCount} members
         </div>
-        <Button variant={club.isMember ? "outline" : "default"} size="sm" className="gap-1">
+        <Button
+          variant={club.isMember ? "outline" : "default"}
+          size="sm"
+          className="gap-1"
+          onClick={() => onToggleMembership?.(club.id)}
+        >
           {club.isMember ? "Joined" : (
             <>
               <UserPlus className="h-4 w-4" />

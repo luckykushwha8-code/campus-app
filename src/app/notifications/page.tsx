@@ -1,8 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRelative } from "date-fns";
 import { Heart, MessageCircle, UserPlus, Bell, Calendar, Briefcase, Users } from "lucide-react";
+import { getStorageItem, setStorageItem } from "@/lib/app-session";
+import { useAppSession } from "@/hooks/use-app-session";
 
 const mockNotifications = [
   {
@@ -71,20 +75,36 @@ const typeIcons: Record<string, typeof Heart> = {
 };
 
 export default function NotificationsPage() {
+  const { user } = useAppSession();
+  const storageKey = user ? `campuslink_notifications_${user.id}` : "campuslink_notifications_guest";
+  const [notifications, setNotifications] = useState(mockNotifications);
+
+  useEffect(() => {
+    setNotifications(getStorageItem(storageKey, mockNotifications));
+  }, [storageKey]);
+
+  useEffect(() => {
+    setStorageItem(storageKey, notifications);
+  }, [notifications, storageKey]);
+
+  function markAllRead() {
+    setNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <div className="mx-auto max-w-screen-lg px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <h1 className="text-title font-semibold text-[var(--text-primary)]">Notifications</h1>
-            <button className="button-ghost gap-2">
+            <button className="button-ghost gap-2" onClick={markAllRead} type="button">
               Mark all read
             </button>
           </div>
         </div>
 
         <div className="space-y-3">
-          {mockNotifications.map((notif) => {
+          {notifications.map((notif) => {
             const Icon = typeIcons[notif.type] || Bell;
             return (
               <div

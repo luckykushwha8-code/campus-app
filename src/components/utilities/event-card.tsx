@@ -17,9 +17,10 @@ interface EventCardProps {
     attendees: number;
     isRegistered: boolean;
   };
+  onToggleRegistration?: (eventId: string) => void;
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event, onToggleRegistration }: EventCardProps) {
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       {event.image && (
@@ -53,7 +54,7 @@ export function EventCard({ event }: EventCardProps) {
             <Avatar alt={event.organizer.name} src={event.organizer.avatar} />
             <span className="text-sm text-gray-600">{event.organizer.name}</span>
           </div>
-          <Button variant={event.isRegistered ? "outline" : "default"} size="sm">
+          <Button variant={event.isRegistered ? "outline" : "default"} size="sm" onClick={() => onToggleRegistration?.(event.id)}>
             {event.isRegistered ? "Registered" : "Register"}
           </Button>
         </div>

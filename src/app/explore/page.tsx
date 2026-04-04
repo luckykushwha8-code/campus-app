@@ -1,8 +1,37 @@
+"use client";
+
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RoomList } from "@/components/rooms";
 import { ClubCard } from "@/components/utilities";
 import { EventCard } from "@/components/utilities";
-import { formatRelative } from "date-fns";
+
+const mockRooms = [
+  {
+    id: "1",
+    name: "CSE 2026",
+    description: "Class announcements, assignment help, and student discussions.",
+    type: "class",
+    membersCount: 124,
+    isJoined: true,
+  },
+  {
+    id: "2",
+    name: "Hostel A",
+    description: "Daily updates, notices, and room swap requests for Hostel A.",
+    type: "hostel",
+    membersCount: 86,
+    isJoined: false,
+  },
+  {
+    id: "3",
+    name: "Placement Prep",
+    description: "Interview practice, referral leads, and resume support.",
+    type: "placement",
+    membersCount: 203,
+    isJoined: false,
+  },
+];
 
 const mockClubs = [
   {
@@ -35,7 +64,7 @@ const mockEvents = [
     description: "24-hour coding competition with exciting prizes",
     image: "https://picsum.photos/seed/event1/600/400",
     location: "Main Auditorium",
-    startDate: formatRelative(new Date(Date.now() + 86400000 * 7), new Date()),
+    startDate: new Date(Date.now() + 86400000 * 7).toISOString(),
     organizer: { name: "Tech Club" },
     attendees: 156,
     isRegistered: false,
@@ -46,7 +75,7 @@ const mockEvents = [
     description: "Annual cultural festival with performances",
     image: "https://picsum.photos/seed/event2/600/400",
     location: "Open Air Theatre",
-    startDate: formatRelative(new Date(Date.now() + 86400000 * 14), new Date()),
+    startDate: new Date(Date.now() + 86400000 * 14).toISOString(),
     organizer: { name: "Cultural Club" },
     attendees: 423,
     isRegistered: true,
@@ -54,6 +83,22 @@ const mockEvents = [
 ];
 
 export default function ExplorePage() {
+  const [rooms, setRooms] = useState(mockRooms);
+
+  function toggleJoin(roomId: string) {
+    setRooms((current) =>
+      current.map((room) =>
+        room.id === roomId
+          ? {
+              ...room,
+              isJoined: !room.isJoined,
+              membersCount: room.isJoined ? Math.max(0, room.membersCount - 1) : room.membersCount + 1,
+            }
+          : room
+      )
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] py-8">
       <div className="mx-auto max-w-screen-lg px-4">
@@ -68,7 +113,7 @@ export default function ExplorePage() {
           </TabsList>
           
           <TabsContent value="rooms" className="space-y-4">
-            <RoomList />
+            <RoomList rooms={rooms} onToggleJoin={toggleJoin} />
           </TabsContent>
           
           <TabsContent value="clubs">

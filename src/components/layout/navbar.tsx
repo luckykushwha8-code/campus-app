@@ -1,8 +1,11 @@
 "use client";
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
+import { useAppSession } from "@/hooks/use-app-session";
 import {
   Home,
   Compass,
@@ -11,8 +14,9 @@ import {
   Bell,
   User,
   Search,
+  FileText,
+  Camera,
 } from "lucide-react";
-import { useState } from "react";
 
 const navItems = [
   { href: "/", icon: Home, label: "Home" },
@@ -24,59 +28,85 @@ const navItems = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
+  const { user, isAuthenticated, logout } = useAppSession();
+
+  function handleLogout() {
+    logout();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <>
-      {/* Top Bar - Desktop */}
-      <header className="fixed top-0 left-0 right-0 z-50 hidden md:block bg-[var(--bg-primary)]/90 backdrop-blur-[2px] border-b-[var(--border-color)]">
+      <header className="fixed left-0 right-0 top-0 z-50 hidden border-b-[var(--border-color)] bg-[var(--bg-primary)]/90 backdrop-blur-[2px] md:block">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-title font-semibold text-[var(--text-primary)]">Campus</span>
           </Link>
-          
+
           <div className="relative flex-max w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)]" />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              className="input-clean w-full pl-10 py-2 text-body"
-            />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+            <input type="text" placeholder="Search..." className="input-clean w-full pl-10 py-2 text-body" />
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <Link href="/notifications" className="p-2 rounded-md hover:bg-[var(--bg-secondary)] transition-colors">
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                className="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                type="button"
+              >
+                Logout
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/signup"
+                  className="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  Sign Up
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-md border border-[var(--border-color)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  Login
+                </Link>
+              </div>
+            )}
+            <Link href="/notifications" className="rounded-md p-2 transition-colors hover:bg-[var(--bg-secondary)]">
               <Bell className="h-5 w-5 text-[var(--text-secondary)]" />
             </Link>
             <Link href="/profile">
-              <Avatar alt="User" className="h-9 w-9" />
+              <Avatar alt={user?.name || "User"} src={user?.avatarUrl} className="h-9 w-9" />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Bottom Navigation - Clean Style */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 hidden md:block bg-[var(--bg-primary)]/90 backdrop-blur-[2px] border-t-[var(--border-color)] safe-area-bottom">
-        <div className="flex items-center justify-around h-12 px-2">
+      <nav className="safe-area-bottom fixed bottom-0 left-0 right-0 z-50 hidden border-t-[var(--border-color)] bg-[var(--bg-primary)]/90 backdrop-blur-[2px] md:block">
+        <div className="flex h-12 items-center justify-around px-2">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || 
-              (item.href !== "/" && pathname.startsWith(item.href));
-            
+            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+
             if (item.isCreate) {
               return (
                 <button
                   key={item.href}
                   onClick={() => setShowCreate(true)}
                   className="flex items-center justify-center p-1"
+                  type="button"
                 >
-                  <button className="button-clean w-10 h-10 rounded-md flex items-center justify-center">
+                  <span className="button-clean flex h-10 w-10 items-center justify-center rounded-md">
                     <Icon className="h-5 w-5" />
-                  </button>
+                  </span>
                 </button>
               );
             }
-            
+
             return (
               <Link
                 key={item.href}
@@ -86,76 +116,52 @@ export function Navbar() {
                   isActive ? "text-[var(--accent)]" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                 )}
               >
-                <Icon 
-                  className="h-5 w-5"
-                />
-                <span className="text-caption mt-[var(--spacing-1)]">{item.label}</span>
+                <Icon className="h-5 w-5" />
+                <span className="mt-[var(--spacing-1)] text-caption">{item.label}</span>
               </Link>
             );
           })}
         </div>
       </nav>
 
-      {/* Create Modal - Clean Style */}
       {showCreate && (
-        <div 
-          className="fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm animate-fade-in"
+        <div
+          className="animate-fade-in fixed inset-0 z-[60] bg-black/20 backdrop-blur-sm"
           onClick={() => setShowCreate(false)}
         >
-          <div 
-            className="absolute bottom-0 left-0 right-0 bg-[var(--bg-primary)] rounded-t-xl animate-slide-up border-t-[var(--border-color)]"
-            onClick={(e) => e.stopPropagation()}
+          <div
+            className="animate-slide-up absolute bottom-0 left-0 right-0 rounded-t-xl border-t-[var(--border-color)] bg-[var(--bg-primary)]"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="p-4 border-b border-[var(--border-color)]">
-              <div className="w-10 h-0.5 bg-[var(--border-light)] rounded-full mx-auto mb-3" />
-              <h3 className="text-title font-semibold text-center text-[var(--text-primary)]">Create</h3>
+            <div className="border-b border-[var(--border-color)] p-4">
+              <div className="mx-auto mb-3 h-0.5 w-10 rounded-full bg-[var(--border-light)]" />
+              <h3 className="text-center text-title font-semibold text-[var(--text-primary)]">Create</h3>
             </div>
-            <div className="p-4 space-y-3">
-              <Link 
-                href="/" 
-                className="flex items-center gap-3 p-3 rounded-md hover:bg-[var(--bg-secondary)] transition-colors"
+            <div className="space-y-3 p-4">
+              <CreateAction
+                href="/"
+                icon={FileText}
+                title="Post"
+                description="Share with your campus"
                 onClick={() => setShowCreate(false)}
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center bg-[var(--bg-secondary)]">
-                  <span className="text-xl">📝</span>
-                </div>
-                <div>
-                  <p className="text-body font-medium text-[var(--text-primary)]">Post</p>
-                  <p className="text-caption text-[var(--text-muted)]">Share with your campus</p>
-                </div>
-              </Link>
-              <Link 
-                href="/" 
-                className="flex items-center gap-3 p-3 rounded-md hover:bg-[var(--bg-secondary)] transition-colors"
+              />
+              <CreateAction
+                href="/"
+                icon={Camera}
+                title="Story"
+                description="Share to your story"
                 onClick={() => setShowCreate(false)}
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center bg-[var(--bg-secondary)]">
-                  <span className="text-xl">📸</span>
-                </div>
-                <div>
-                  <p className="text-body font-medium text-[var(--text-primary)]">Story</p>
-                  <p className="text-caption text-[var(--text-muted)]">Share to your story</p>
-                </div>
-              </Link>
-              <Link 
-                href="/" 
-                className="flex items-center gap-3 p-3 rounded-md hover:bg-[var(--bg-secondary)] transition-colors"
+              />
+              <CreateAction
+                href="/"
+                icon={User}
+                title="Anonymous"
+                description="Share anonymously"
                 onClick={() => setShowCreate(false)}
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center bg-[var(--bg-secondary)]">
-                  <span className="text-xl">🎭</span>
-                </div>
-                <div>
-                  <p className="text-body font-medium text-[var(--text-primary)]">Anonymous</p>
-                  <p className="text-caption text-[var(--text-muted)]">Share anonymously</p>
-                </div>
-              </Link>
+              />
             </div>
             <div className="p-4 pb-6">
-              <button 
-                onClick={() => setShowCreate(false)}
-                className="w-full py-2 rounded-md button-outline"
-              >
+              <button onClick={() => setShowCreate(false)} className="button-outline w-full rounded-md py-2" type="button">
                 Cancel
               </button>
             </div>
@@ -163,5 +169,31 @@ export function Navbar() {
         </div>
       )}
     </>
+  );
+}
+
+function CreateAction({
+  href,
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  href: string;
+  icon: typeof FileText;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <Link href={href} className="flex items-center gap-3 rounded-md p-3 transition-colors hover:bg-[var(--bg-secondary)]" onClick={onClick}>
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-[var(--bg-secondary)]">
+        <Icon className="h-5 w-5 text-[var(--accent)]" />
+      </div>
+      <div>
+        <p className="text-body font-medium text-[var(--text-primary)]">{title}</p>
+        <p className="text-caption text-[var(--text-muted)]">{description}</p>
+      </div>
+    </Link>
   );
 }
