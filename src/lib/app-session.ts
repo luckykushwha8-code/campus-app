@@ -8,7 +8,18 @@ export interface AppUser {
   collegeId?: string;
   avatarUrl?: string;
   coverUrl?: string;
+  settings?: AppUserSettings;
   verified?: boolean;
+}
+
+export interface AppUserSettings {
+  pushNotifications: boolean;
+  roomAlerts: boolean;
+  emailUpdates: boolean;
+  profileVisible: boolean;
+  showCollegeDetails: boolean;
+  showActivityStatus: boolean;
+  publicProfile: boolean;
 }
 
 export interface AppSession {
@@ -26,6 +37,16 @@ const SESSION_KEY = "campuslink_session";
 const SESSION_EVENT = "campuslink:session";
 export const SESSION_COOKIE = "campuslink_token";
 const LOCAL_ACCOUNTS_KEY = "campuslink_local_accounts";
+
+export const DEFAULT_USER_SETTINGS: AppUserSettings = {
+  pushNotifications: true,
+  roomAlerts: true,
+  emailUpdates: false,
+  profileVisible: true,
+  showCollegeDetails: true,
+  showActivityStatus: true,
+  publicProfile: false,
+};
 
 function canUseStorage() {
   return typeof window !== "undefined";
@@ -67,6 +88,10 @@ export function normalizeUser(user: Partial<AppUser> & { id: string; email: stri
     collegeId: user.collegeId || "",
     avatarUrl: user.avatarUrl || "",
     coverUrl: user.coverUrl || "",
+    settings: {
+      ...DEFAULT_USER_SETTINGS,
+      ...(user.settings || {}),
+    },
     verified: Boolean(user.verified),
   } satisfies AppUser;
 }

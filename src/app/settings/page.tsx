@@ -1,47 +1,96 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ShieldCheck, UserRound, Smartphone, KeyRound, Eye, Globe, LogOut } from "lucide-react";
-import { getStorageItem, setStorageItem } from "@/lib/app-session";
+import { DEFAULT_USER_SETTINGS, type AppUserSettings, getStorageItem, setStorageItem } from "@/lib/app-session";
 import { useAppSession } from "@/hooks/use-app-session";
 
-type SettingsState = {
-  pushNotifications: boolean;
-  roomAlerts: boolean;
-  emailUpdates: boolean;
-  profileVisible: boolean;
-  showCollegeDetails: boolean;
-  showActivityStatus: boolean;
-  publicProfile: boolean;
-};
-
-const defaultSettings: SettingsState = {
-  pushNotifications: true,
-  roomAlerts: true,
-  emailUpdates: false,
-  profileVisible: true,
-  showCollegeDetails: true,
-  showActivityStatus: true,
-  publicProfile: false,
-};
-
 export default function SettingsPage() {
-  const { user, isAuthenticated, logout } = useAppSession();
+  const { user, isAuthenticated, logout, updateUser } = useAppSession();
   const storageKey = user ? `campuslink_settings_${user.id}` : "campuslink_settings_guest";
-  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
+  const [settings, setSettings] = useState<AppUserSettings>(DEFAULT_USER_SETTINGS);
   const [savedMessage, setSavedMessage] = useState("");
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const actionButtonClass =
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0";
+  const settingsRef = useRef<AppUserSettings>(DEFAULT_USER_SETTINGS);
 
   useEffect(() => {
-    setSettings(getStorageItem(storageKey, defaultSettings));
-  }, [storageKey]);
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
-    setStorageItem(storageKey, settings);
-    setSavedMessage("Preferences saved on this device.");
-  }, [settings, storageKey]);
+    async function loadSettings() {
+      if (!user?.id) return;
+
+      const localSettings = getStorageItem(storageKey, DEFAULT_USER_SETTINGS);
+
+      try {
+        const response = await fetch("/api/user/settings", { cache: "no-store" });
+        const data = await response.json();
+        if (response.ok && data.ok && data.settings) {
+          const nextSettings = {
+            ...DEFAULT_USER_SETTINGS,
+            ...(data.settings || {}),
+          };
+          setSettings(nextSettings);
+          setStorageItem(storageKey, nextSettings);
+          updateUser({ settings: nextSettings });
+          setSavedMessage("Preferences synced with your account.");
+          setIsLoaded(true);
+          return;
+        }
+      } catch {
+        // Fall back to browser storage below.
+      }
+
+      setSettings(localSettings);
+      setSavedMessage("Preferences loaded from this device.");
+      setIsLoaded(true);
+    }
+
+    loadSettings();
+  }, [storageKey, updateUser, user?.id]);
+
+  useEffect(() => {
+    if (!isLoaded || !user?.id) return;
+
+    const timeout = window.setTimeout(async () => {
+      const nextSettings = settingsRef.current;
+      setStorageItem(storageKey, nextSettings);
+      setIsSaving(true);
+
+      try {
+        const response = await fetch("/api/user/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            updates: {
+              settings: nextSettings,
+            },
+          }),
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          setSavedMessage(data.error || "Preferences saved only on this device right now.");
+          return;
+        }
+
+        updateUser({ settings: nextSettings });
+        setSavedMessage("Preferences saved to your account.");
+      } catch {
+        setSavedMessage("Preferences saved on this device. Account sync will retry later.");
+      } finally {
+        setIsSaving(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [isLoaded, settings, storageKey, updateUser, user?.id]);
 
   const privacyMode = useMemo(() => {
     if (!settings.profileVisible) return "Hidden";
@@ -71,7 +120,7 @@ export default function SettingsPage() {
     );
   }
 
-  function toggleSetting(key: keyof SettingsState) {
+  function toggleSetting(key: keyof AppUserSettings) {
     setSettings((current) => ({ ...current, [key]: !current[key] }));
   }
 
@@ -210,11 +259,11 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--text-primary)]">Device status</h2>
-                  <p className="text-sm text-[var(--text-secondary)]">Preferences are saved instantly in this browser.</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Preferences sync to your account and stay available on this browser.</p>
                 </div>
               </div>
               <p className="mt-4 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
-                {savedMessage || "Preferences will save automatically once you make a change."}
+                {isSaving ? "Saving your preferences..." : savedMessage || "Preferences will save automatically once you make a change."}
               </p>
             </div>
           </div>

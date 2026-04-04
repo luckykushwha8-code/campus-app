@@ -9,6 +9,15 @@ export interface IUser extends Document {
   collegeName?: string;
   avatarUrl?: string;
   coverUrl?: string;
+  settings?: {
+    pushNotifications: boolean;
+    roomAlerts: boolean;
+    emailUpdates: boolean;
+    profileVisible: boolean;
+    showCollegeDetails: boolean;
+    showActivityStatus: boolean;
+    publicProfile: boolean;
+  };
   role: "student" | "admin";
   verified?: boolean;
   followers: string[];
@@ -27,6 +36,15 @@ const UserSchema = new Schema<IUser>({
   collegeName: { type: String },
   avatarUrl: { type: String },
   coverUrl: { type: String },
+  settings: {
+    pushNotifications: { type: Boolean, default: true },
+    roomAlerts: { type: Boolean, default: true },
+    emailUpdates: { type: Boolean, default: false },
+    profileVisible: { type: Boolean, default: true },
+    showCollegeDetails: { type: Boolean, default: true },
+    showActivityStatus: { type: Boolean, default: true },
+    publicProfile: { type: Boolean, default: false },
+  },
   role: { type: String, enum: ["student", "admin"], default: "student" },
   verified: { type: Boolean, default: false },
   followers: { type: [String], default: [] },

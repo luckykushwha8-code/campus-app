@@ -171,15 +171,6 @@ export default function ProfilePage() {
     }
   }
 
-  function readImageFile(file: File) {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Unable to read file"));
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function handleImageSelection(event: ChangeEvent<HTMLInputElement>, target: "avatarUrl" | "coverUrl") {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -195,9 +186,24 @@ export default function ProfilePage() {
     }
 
     try {
-      const imageData = await readImageFile(file);
+      setStatusMessage("Uploading image...");
+      const payload = new FormData();
+      payload.append("file", file);
+      payload.append("kind", target === "avatarUrl" ? "avatar" : "cover");
+
+      const uploadResponse = await fetch("/api/media/upload", {
+        method: "POST",
+        body: payload,
+      });
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok || !uploadData.ok || !uploadData.asset?.url) {
+        setStatusMessage(uploadData.error || "Unable to upload image right now.");
+        return;
+      }
+
       await persistProfileMedia(
-        { [target]: imageData } as Partial<ProfileForm>,
+        { [target]: uploadData.asset.url } as Partial<ProfileForm>,
         target === "avatarUrl" ? "Profile photo updated." : "Cover photo updated."
       );
     } catch {
@@ -232,7 +238,7 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="overflow-hidden rounded-[32px] border border-[var(--border-color)] bg-white shadow-[0_18px_60px_rgba(17,24,39,0.07)]">
           <div
-            className="relative min-h-[188px] rounded-b-[28px] bg-[linear-gradient(135deg,#1d4ed8_0%,#0f172a_45%,#0ea5e9_100%)] bg-cover bg-center"
+            className="relative min-h-[196px] rounded-b-[28px] bg-[linear-gradient(135deg,#1d4ed8_0%,#0f172a_45%,#0ea5e9_100%)] bg-cover bg-center"
             style={form.coverUrl ? { backgroundImage: `linear-gradient(135deg, rgba(29,78,216,0.22) 0%, rgba(15,23,42,0.38) 50%, rgba(14,165,233,0.18) 100%), url(${form.coverUrl})` } : undefined}
           >
             <div className="absolute inset-x-0 bottom-0 flex justify-end p-4 sm:p-5">
@@ -249,7 +255,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="relative px-5 pb-6 pt-0 sm:px-6 sm:pb-8">
-            <div className="relative z-10 -mt-12 flex flex-col gap-6 sm:-mt-14 lg:flex-row lg:items-start lg:justify-between">
+            <div className="relative z-10 -mt-7 flex flex-col gap-6 sm:-mt-8 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
                 <div className="relative w-fit">
                   <Avatar
@@ -267,7 +273,7 @@ export default function ProfilePage() {
                     <Edit3 className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="min-w-0 space-y-1 pt-2 sm:pb-1">
+                <div className="min-w-0 space-y-1 pt-5 sm:pt-6 sm:pb-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-3xl font-bold tracking-[-0.02em] text-[var(--text-primary)] sm:text-4xl">{user.name}</h1>
                     {user.verified ? <BadgeCheck className="h-5 w-5 text-[var(--accent)]" /> : null}
@@ -278,7 +284,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end lg:pt-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end lg:pt-6">
                 <button
                   className={`${actionButtonClass} border-[var(--border-light)] bg-white text-[var(--accent)] shadow-[0_10px_24px_rgba(15,23,42,0.06)] hover:bg-[var(--bg-secondary)]`}
                   onClick={() => setIsEditing((value) => !value)}

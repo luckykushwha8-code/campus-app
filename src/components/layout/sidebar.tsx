@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, MessageSquare, Users, BookOpen, Calendar, Briefcase, ShoppingBag, GraduationCap, Flame } from "lucide-react";
+import { Home, MessageSquare, Users, Calendar, GraduationCap, Flame } from "lucide-react";
 
 const quickLinks = [
   { href: "/", icon: Home, label: "Feed" },
@@ -12,10 +12,7 @@ const quickLinks = [
 ];
 
 const categories = [
-  { href: "/notes", icon: BookOpen, label: "Notes" },
   { href: "/events", icon: Calendar, label: "Events" },
-  { href: "/placements", icon: Briefcase, label: "Placements" },
-  { href: "/marketplace", icon: ShoppingBag, label: "Marketplace" },
   { href: "/clubs", icon: GraduationCap, label: "Clubs" },
 ];
 
