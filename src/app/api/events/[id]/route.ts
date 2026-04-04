@@ -1,4 +1,5 @@
 import { connectDB } from "@/lib/db";
+import { Types } from "mongoose";
 import { serializeEvent } from "@/lib/event-serialization";
 import { getRequestUser, getRequestUserId } from "@/lib/request-auth";
 import { EventModel } from "@/models/Event";
@@ -8,6 +9,9 @@ export async function GET(req: Request, context: any) {
     await connectDB();
     const currentUserId = await getRequestUserId(req);
     const { id } = await context.params;
+    if (!Types.ObjectId.isValid(id)) {
+      return Response.json({ ok: false, error: "Event not found." }, { status: 404 });
+    }
     const event = await EventModel.findById(id).lean();
 
     if (!event) {
@@ -32,6 +36,9 @@ export async function DELETE(req: Request, context: any) {
     }
 
     const { id } = await context.params;
+    if (!Types.ObjectId.isValid(id)) {
+      return Response.json({ ok: false, error: "Event not found." }, { status: 404 });
+    }
     const event = await EventModel.findById(id);
     if (!event) {
       return Response.json({ ok: false, error: "Event not found." }, { status: 404 });

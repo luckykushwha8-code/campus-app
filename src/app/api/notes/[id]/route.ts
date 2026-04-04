@@ -1,4 +1,5 @@
 import { connectDB } from "@/lib/db";
+import { Types } from "mongoose";
 import { getRequestUserId } from "@/lib/request-auth";
 import { NoteModel } from "@/models/Note";
 
@@ -8,6 +9,9 @@ export async function GET(req: Request, { params }: any) {
     const id = params?.id;
     if (!id) {
       return new Response(JSON.stringify({ ok: false, error: "Missing note id." }), { status: 400 });
+    }
+    if (!Types.ObjectId.isValid(id)) {
+      return new Response(JSON.stringify({ ok: false, error: "Note not found." }), { status: 404 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -42,6 +46,9 @@ export async function PUT(req: Request, { params }: any) {
     const id = params?.id;
     if (!id) {
       return new Response(JSON.stringify({ ok: false, error: "Missing note id." }), { status: 400 });
+    }
+    if (!Types.ObjectId.isValid(id)) {
+      return new Response(JSON.stringify({ ok: false, error: "Note not found." }), { status: 404 });
     }
 
     const body = await req.json();
@@ -104,6 +111,9 @@ export async function DELETE(req: Request, { params }: any) {
     const id = params?.id;
     if (!id) {
       return new Response(JSON.stringify({ ok: false, error: "Missing note id." }), { status: 400 });
+    }
+    if (!Types.ObjectId.isValid(id)) {
+      return new Response(JSON.stringify({ ok: false, error: "Note not found." }), { status: 404 });
     }
 
     const note = await NoteModel.findById(id);
