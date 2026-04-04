@@ -16,9 +16,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      <div className="flex">
+      <div className="app-frame flex gap-6 px-4 pb-20 pt-20 md:px-6 lg:pt-24">
         <Sidebar />
-        <main className="flex-1 min-h-screen pb-16 md:pb-0 md:ml-0">{children}</main>
+        <main className="min-h-screen min-w-0 flex-1">{children}</main>
       </div>
     </>
   );

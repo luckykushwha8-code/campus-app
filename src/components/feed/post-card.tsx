@@ -1,18 +1,9 @@
 "use client";
-import { useState, useRef } from "react";
+
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { formatDate } from "@/lib/utils";
-import {
-  Heart,
-  MessageCircle,
-  Share2,
-  Bookmark,
-  Send,
-  MoreHorizontal,
-  BadgeCheck,
-  Globe,
-  Users,
-} from "lucide-react";
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PostCardProps {
@@ -45,195 +36,125 @@ export function PostCard({ post }: PostCardProps) {
   const [commentText, setCommentText] = useState("");
   const heartRef = useRef<HTMLDivElement>(null);
 
-  const handleLike = () => {
-    setLiked(!liked);
-    setLikesCount(liked ? likesCount - 1 : likesCount + 1);
-  };
+  function handleLike() {
+    setLiked((value) => !value);
+    setLikesCount((value) => (liked ? value - 1 : value + 1));
+  }
 
-  const handleDoubleTap = () => {
+  function handleDoubleTap() {
     if (!liked) {
       handleLike();
       heartRef.current?.classList.add("animate-heart");
       setTimeout(() => heartRef.current?.classList.remove("animate-heart"), 300);
     }
-  };
+  }
 
   return (
-    <article className="border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3">
+    <article className="app-surface overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full overflow-hidden">
-              {post.isAnonymous ? (
-                <div className="w-full h-full flex items-center justify-center text-[var(--accent)]">
-                  A
-                </div>
-              ) : (
-                <Image
-                  src={
-                    post.author.avatar ||
-                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author.username}`
-                  }
-                  alt={post.author.name}
-                  className="w-full h-full object-cover"
-                  width={40}
-                  height={40}
-                />
-              )}
-            </div>
+          <div className="h-11 w-11 overflow-hidden rounded-full">
+            {post.isAnonymous ? (
+              <div className="flex h-full w-full items-center justify-center bg-[var(--bg-secondary)] text-sm font-semibold text-[var(--accent)]">
+                A
+              </div>
+            ) : (
+              <Image
+                src={post.author.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author.username}`}
+                alt={post.author.name}
+                className="h-full w-full object-cover"
+                width={44}
+                height={44}
+              />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-body font-medium text-[var(--text-primary)]">
+              <span className="text-sm font-semibold text-[var(--text-primary)]">
                 {post.isAnonymous ? "Anonymous" : post.author.name}
               </span>
-              {post.author.isVerified && !post.isAnonymous && (
-                <BadgeCheck className="h-3.5 w-3.5 text-[var(--accent)]" />
-              )}
+              {post.author.isVerified && !post.isAnonymous ? <BadgeCheck className="h-3.5 w-3.5 text-[var(--accent)]" /> : null}
             </div>
-            <div className="flex items-center gap-2 text-caption text-[var(--text-muted)]">
-              {!post.isAnonymous && (
-                <>
-                  <span>@{post.author.username}</span>
-                  <span>|</span>
-                </>
-              )}
-              {post.author.institution && (
-                <>
-                  <span className="text-[var(--accent)]">{post.author.institution}</span>
-                  <span>|</span>
-                </>
-              )}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+              {!post.isAnonymous ? <span>@{post.author.username}</span> : null}
+              {post.author.institution ? <span>{post.author.institution}</span> : null}
               <span>{formatDate(post.createdAt)}</span>
             </div>
           </div>
         </div>
-        <button className="p-2 text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] rounded-md transition-colors hover:text-[var(--text-primary)]">
+
+        <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)]" type="button">
           <MoreHorizontal className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="px-4 pb-3">
-        <p className="text-body whitespace-pre-wrap leading-relaxed text-[var(--text-primary)]">
-          {post.content}
-        </p>
+      <div className="px-4 pb-4">
+        <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--text-primary)]">{post.content}</p>
       </div>
 
-      {/* Image */}
-      {post.images && post.images.length > 0 && (
-        <div className="mt-2 relative" onDoubleClick={handleDoubleTap}>
-          <div className="grid gap-1">
-            {post.images.length === 1 ? (
-              <div className="aspect-video bg-[var(--bg-secondary)] overflow-hidden">
-                <Image src={post.images[0]} alt="" className="w-full h-full object-cover" width={800} height={450} />
-              </div>
-            ) : post.images.length === 2 ? (
-              <>
-                <div className="aspect-square bg-[var(--bg-secondary)] overflow-hidden">
-                  <Image src={post.images[0]} alt="" className="w-full h-full object-cover" width={600} height={600} />
-                </div>
-                <div className="aspect-square bg-[var(--bg-secondary)] overflow-hidden">
-                  <Image src={post.images[1]} alt="" className="w-full h-full object-cover" width={600} height={600} />
-                </div>
-              </>
-            ) : post.images.length === 3 ? (
-              <>
-                <div className="row-span-2 aspect-square bg-[var(--bg-secondary)] overflow-hidden">
-                  <Image src={post.images[0]} alt="" className="w-full h-full object-cover" width={800} height={800} />
-                </div>
-                <div className="aspect-square bg-[var(--bg-secondary)] overflow-hidden">
-                  <Image src={post.images[1]} alt="" className="w-full h-full object-cover" width={600} height={600} />
-                </div>
-                <div className="aspect-square bg-[var(--bg-secondary)] overflow-hidden">
-                  <Image src={post.images[2]} alt="" className="w-full h-full object-cover" width={600} height={600} />
-                </div>
-              </>
-            ) : (
-              <>
-                {post.images.slice(0, 3).map((img, idx) => (
-                  <div key={idx} className="aspect-square bg-[var(--bg-secondary)] overflow-hidden">
-                    <Image src={img} alt="" className="w-full h-full object-cover" width={600} height={600} />
-                  </div>
-                ))}
-                <div className="aspect-square bg-[var(--bg-secondary)] overflow-hidden relative">
-                  <Image src={post.images[3]} alt="" className="w-full h-full object-cover" width={600} height={600} />
-                  {post.images.length > 4 && (
-                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                      <span className="text-white text-[var(--text-primary)] text-sm">+{post.images.length - 4}</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+      {post.images?.length ? (
+        <div className="relative px-4 pb-4" onDoubleClick={handleDoubleTap}>
+          <div className="overflow-hidden rounded-2xl bg-[var(--bg-secondary)]">
+            <Image src={post.images[0]} alt="" className="h-full w-full object-cover" width={900} height={520} />
           </div>
-
-          {/* Double tap heart overlay */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100">
-            <div ref={heartRef} className="animate-heart hidden">
-              <Heart className="h-12 w-12 text-[var(--accent)] fill-[var(--accent)]" />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100">
+            <div ref={heartRef} className="hidden">
+              <Heart className="h-14 w-14 fill-[var(--accent)] text-[var(--accent)]" />
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Actions */}
-      <div className="px-4 py-3">
+      <div className="border-t border-[var(--border-color)] px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleLike}
               className={cn(
-                "p-2 rounded-md transition-colors hover:bg-[var(--bg-secondary)]",
+                "app-panel flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
                 liked ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               )}
+              type="button"
             >
               <Heart className={cn("h-4 w-4", liked && "fill-current")} />
             </button>
             <button
-              onClick={() => setShowComments(!showComments)}
-              className="p-2 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              onClick={() => setShowComments((value) => !value)}
+              className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              type="button"
             >
               <MessageCircle className="h-4 w-4" />
             </button>
-            <button className="p-2 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] transition-colors">
+            <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)]" type="button">
               <Share2 className="h-4 w-4" />
             </button>
           </div>
           <button
-            onClick={() => setSaved(!saved)}
+            onClick={() => setSaved((value) => !value)}
             className={cn(
-              "p-2 rounded-md transition-colors hover:bg-[var(--bg-secondary)]",
+              "app-panel flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
               saved ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             )}
+            type="button"
           >
             <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
           </button>
         </div>
 
-        {/* Likes count */}
-        <div className="mt-2 text-sm font-medium text-[var(--text-secondary)]">
-          {likesCount.toLocaleString()} likes
-        </div>
+        <div className="mt-3 text-sm font-medium text-[var(--text-secondary)]">{likesCount.toLocaleString()} likes</div>
 
-        {/* Caption preview */}
-        {!showComments && post.commentsCount > 0 && (
-          <button
-            onClick={() => setShowComments(true)}
-            className="text-sm text-[var(--text-muted)] mt-2 hover:text-[var(--text-primary)]"
-          >
+        {!showComments && post.commentsCount > 0 ? (
+          <button onClick={() => setShowComments(true)} className="mt-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]" type="button">
             View all {post.commentsCount} comments
           </button>
-        )}
+        ) : null}
 
-        {/* Comments section */}
-        {showComments && (
-          <div className="mt-4 pt-3 border-t border-[var(--border-color)]">
-            <div className="space-y-3 mb-3">
+        {showComments ? (
+          <div className="mt-4 border-t border-[var(--border-color)] pt-4">
+            <div className="mb-3 space-y-3">
               {[
-                { user: "amit_k", text: "Great post!", time: "1h" },
-                { user: "sneha_123", text: "This is exactly what we needed!", time: "45m" },
+                { user: "amit_k", text: "Great post!" },
+                { user: "sneha_123", text: "This is exactly what we needed." },
               ].map((comment, idx) => (
                 <div key={idx} className="text-sm">
                   <span className="font-medium text-[var(--text-primary)]">{comment.user}</span>{" "}
@@ -242,21 +163,20 @@ export function PostCard({ post }: PostCardProps) {
               ))}
             </div>
 
-            {/* Comment input */}
-            <div className="flex items-center gap-3 pt-3 border-t border-[var(--border-color)]">
+            <div className="flex items-center gap-3 border-t border-[var(--border-color)] pt-3">
               <input
                 type="text"
                 value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
+                onChange={(event) => setCommentText(event.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1 input-clean text-body"
+                className="input-clean flex-1 text-body"
               />
-              <button disabled={!commentText.trim()} className="button-clean px-4">
+              <button disabled={!commentText.trim()} className="button-clean px-4" type="button">
                 Post
               </button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </article>
   );
