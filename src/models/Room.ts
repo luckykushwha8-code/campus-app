@@ -7,6 +7,7 @@ export interface IRoom extends Document {
   type: string;
   memberIds: string[];
   creatorId?: string;
+  creatorName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +20,7 @@ const RoomSchema = new Schema<IRoom>(
     type: { type: String, required: true, index: true },
     memberIds: { type: [String], default: [] },
     creatorId: { type: String },
+    creatorName: { type: String },
   },
   { timestamps: true }
 );

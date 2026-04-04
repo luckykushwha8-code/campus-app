@@ -1,25 +1,32 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Hash, Lock } from "lucide-react";
+import { Users, Hash, ArrowRight, Trash2 } from "lucide-react";
 
 export interface RoomCardData {
   id: string;
+  slug?: string;
   name: string;
   description?: string;
   type: string;
   membersCount: number;
   isJoined: boolean;
-  lastActivity?: string;
+  isOwner?: boolean;
+  creatorName?: string;
+  createdAt?: string;
 }
 
 interface RoomCardProps {
   room: RoomCardData;
   onToggleJoin: (roomId: string) => void;
+  onDelete?: (roomId: string) => void;
+  isJoining?: boolean;
+  isDeleting?: boolean;
 }
 
-export function RoomCard({ room, onToggleJoin }: RoomCardProps) {
+export function RoomCard({ room, onToggleJoin, onDelete, isJoining, isDeleting }: RoomCardProps) {
   const typeLabels: Record<string, string> = {
     college: "College",
     school: "School",
@@ -49,24 +56,36 @@ export function RoomCard({ room, onToggleJoin }: RoomCardProps) {
             </div>
           </div>
         </div>
-        {!room.isJoined ? (
-          <Badge variant="secondary">
-            <Lock className="mr-1 h-3 w-3" />
-            Private
-          </Badge>
-        ) : null}
+        {room.isOwner ? <Badge variant="secondary">Owner</Badge> : null}
       </div>
 
       {room.description ? <p className="mt-3 text-sm text-gray-600 line-clamp-2">{room.description}</p> : null}
+      {room.creatorName ? <p className="mt-2 text-xs text-gray-500">Created by {room.creatorName}</p> : null}
 
       <div className="mt-4 flex items-center justify-between">
         <div className="flex items-center gap-1 text-sm text-gray-500">
           <Users className="h-4 w-4" />
           {room.membersCount} members
         </div>
-        <Button onClick={() => onToggleJoin(room.id)} variant={room.isJoined ? "outline" : "default"} size="sm">
-          {room.isJoined ? "Joined" : "Join"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href={`/rooms/${room.id}`} className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">
+            Open
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+          <Button onClick={() => onToggleJoin(room.id)} variant={room.isJoined ? "outline" : "default"} size="sm" disabled={isJoining}>
+            {isJoining ? "Saving..." : room.isJoined ? "Leave" : "Join"}
+          </Button>
+          {room.isOwner && onDelete ? (
+            <button
+              className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+              onClick={() => onDelete(room.id)}
+              disabled={isDeleting}
+              type="button"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
