@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, models, Document } from "mongoose";
 
 export interface IStory extends Document {
   userId: string;
@@ -15,5 +15,5 @@ const StorySchema = new Schema<IStory>({
   expiresAt: { type: Date, index: true },
 }, { timestamps: true });
 
-export const StoryModel = model<IStory>("Story", StorySchema);
+export const StoryModel = models.Story || model<IStory>("Story", StorySchema);
 export default StoryModel;

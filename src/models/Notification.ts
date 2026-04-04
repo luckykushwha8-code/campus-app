@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, models, Document } from "mongoose";
 
 export type NotificationType = "like" | "comment" | "follow" | "message" | "system";
 
@@ -17,5 +17,5 @@ const NotificationSchema = new Schema<INotification>({
   isRead: { type: Boolean, default: false },
 }, { timestamps: true });
 
-export const NotificationModel = model<INotification>("Notification", NotificationSchema);
+export const NotificationModel = models.Notification || model<INotification>("Notification", NotificationSchema);
 export default NotificationModel;

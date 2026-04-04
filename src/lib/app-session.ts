@@ -15,9 +15,16 @@ export interface AppSession {
   user: AppUser;
 }
 
+interface LocalAuthAccount {
+  email: string;
+  password: string;
+  user: AppUser;
+}
+
 const SESSION_KEY = "campuslink_session";
 const SESSION_EVENT = "campuslink:session";
 export const SESSION_COOKIE = "campuslink_token";
+const LOCAL_ACCOUNTS_KEY = "campuslink_local_accounts";
 
 function canUseStorage() {
   return typeof window !== "undefined";
@@ -119,6 +126,20 @@ export function getStorageItem<T>(key: string, fallback: T) {
 export function setStorageItem<T>(key: string, value: T) {
   if (!canUseStorage()) return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function saveLocalAccount(account: LocalAuthAccount) {
+  const current = getStorageItem<LocalAuthAccount[]>(LOCAL_ACCOUNTS_KEY, []);
+  const next = [
+    ...current.filter((item) => item.email !== account.email),
+    account,
+  ];
+  setStorageItem(LOCAL_ACCOUNTS_KEY, next);
+}
+
+export function findLocalAccount(email: string, password: string) {
+  const current = getStorageItem<LocalAuthAccount[]>(LOCAL_ACCOUNTS_KEY, []);
+  return current.find((item) => item.email === email && item.password === password) || null;
 }
 
 export function subscribeToSession(callback: () => void) {

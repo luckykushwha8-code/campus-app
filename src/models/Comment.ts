@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, models, Document } from "mongoose";
 
 export interface IComment extends Document {
   postId: string;
@@ -13,5 +13,5 @@ const CommentSchema = new Schema<IComment>({
   content: { type: String, required: true },
 }, { timestamps: true });
 
-export const CommentModel = model<IComment>("Comment", CommentSchema);
+export const CommentModel = models.Comment || model<IComment>("Comment", CommentSchema);
 export default CommentModel;

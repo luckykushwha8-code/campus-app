@@ -1,4 +1,4 @@
-import { Schema, model, Document } from "mongoose";
+import { Schema, model, models, Document } from "mongoose";
 
 export interface IPost extends Document {
   authorId: string;
@@ -28,5 +28,5 @@ const PostSchema = new Schema<IPost>({
   campusName: { type: String },
 }, { timestamps: true });
 
-export const PostModel = model<IPost>("Post", PostSchema);
+export const PostModel = models.Post || model<IPost>("Post", PostSchema);
 export default PostModel;

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { normalizeUser } from "@/lib/app-session";
+import { findLocalAccount, normalizeUser } from "@/lib/app-session";
 import { useAppSession } from "@/hooks/use-app-session";
 import { Input } from "@/components/ui/input";
 
@@ -21,17 +21,32 @@ export default function LoginPage() {
     setError("");
 
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: normalizedEmail, password }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
+        if (data.error === "Server error") {
+          const localAccount = findLocalAccount(normalizedEmail, password);
+          if (localAccount) {
+            login({
+              token: `local-${Date.now()}`,
+              user: normalizeUser(localAccount.user),
+            });
+            router.push("/");
+            router.refresh();
+            return;
+          }
+          setError("Login server is unavailable right now. Please try again later.");
+          return;
+        }
         setError(data.error || "Login failed. Please try again.");
         return;
       }
@@ -43,6 +58,17 @@ export default function LoginPage() {
       router.push("/");
       router.refresh();
     } catch {
+      const normalizedEmail = email.trim().toLowerCase();
+      const localAccount = findLocalAccount(normalizedEmail, password);
+      if (localAccount) {
+        login({
+          token: `local-${Date.now()}`,
+          user: normalizeUser(localAccount.user),
+        });
+        router.push("/");
+        router.refresh();
+        return;
+      }
       setError("Unable to reach the server. Please try again.");
     } finally {
       setIsLoading(false);

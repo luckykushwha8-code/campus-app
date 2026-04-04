@@ -10,7 +10,8 @@ function buildUsername(email: string, name?: string) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, password } = body;
+    const password = body.password;
+    const email = body.email?.trim().toLowerCase();
     if (!email || !password) {
       return new Response(JSON.stringify({ ok: false, error: 'Missing credentials' }), { status: 400 });
     }

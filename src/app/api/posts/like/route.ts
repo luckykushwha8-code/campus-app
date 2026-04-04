@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     if (!post) return new Response(JSON.stringify({ ok: false, error: 'Post not found' }), { status: 404 });
     const hasLiked = post.likes.includes(user.userId);
     if (hasLiked) {
-      post.likes = post.likes.filter((id) => id !== user.userId);
+      post.likes = post.likes.filter((id: string) => id !== user.userId);
       post.likesCount = Math.max(0, post.likesCount - 1);
     } else {
       post.likes.push(user.userId);
