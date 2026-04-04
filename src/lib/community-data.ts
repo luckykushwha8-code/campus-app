@@ -1,0 +1,122 @@
+export const defaultRooms = [
+  {
+    slug: "cse-2025",
+    name: "CSE 2025",
+    description: "Computer Science batch 2025 students",
+    type: "class",
+    memberIds: [],
+  },
+  {
+    slug: "nit-trichy-campus",
+    name: "NIT Trichy Campus",
+    description: "Main campus discussions",
+    type: "college",
+    memberIds: [],
+  },
+  {
+    slug: "placement-cell",
+    name: "Placement Cell",
+    description: "All placement and internship updates",
+    type: "placement",
+    memberIds: [],
+  },
+  {
+    slug: "tech-club-room",
+    name: "Tech Club",
+    description: "Technical events and workshops",
+    type: "club",
+    memberIds: [],
+  },
+  {
+    slug: "hostel-a-boys",
+    name: "Hostel A - Boys",
+    description: "Hostel A residents",
+    type: "hostel",
+    memberIds: [],
+  },
+  {
+    slug: "buy-sell-books",
+    name: "Buy/Sell Books",
+    description: "Buy and sell textbooks",
+    type: "buysell",
+    memberIds: [],
+  },
+];
+
+export const defaultClubs = [
+  {
+    slug: "tech-club",
+    name: "Tech Club",
+    description: "Coding, development, and technology enthusiasts. We organize hackathons, workshops, and coding contests.",
+    logo: "https://picsum.photos/seed/club1/100/100",
+    memberIds: [],
+  },
+  {
+    slug: "cultural-club",
+    name: "Cultural Club",
+    description: "Arts, music, dance, and cultural events. The heart of campus creativity.",
+    logo: "https://picsum.photos/seed/club2/100/100",
+    memberIds: [],
+  },
+  {
+    slug: "sports-club",
+    name: "Sports Club",
+    description: "All sports activities and tournaments. Stay fit and compete!",
+    logo: "https://picsum.photos/seed/club3/100/100",
+    memberIds: [],
+  },
+  {
+    slug: "photography-club",
+    name: "Photography Club",
+    description: "Capture moments and learn photography skills.",
+    logo: "https://picsum.photos/seed/club4/100/100",
+    memberIds: [],
+  },
+  {
+    slug: "ai-ml-club",
+    name: "AI/ML Club",
+    description: "Artificial Intelligence and Machine Learning enthusiasts.",
+    logo: "https://picsum.photos/seed/club5/100/100",
+    memberIds: [],
+  },
+  {
+    slug: "literary-club",
+    name: "Literary Club",
+    description: "Debates, quizzes, writing, and literature appreciation.",
+    logo: "https://picsum.photos/seed/club6/100/100",
+    memberIds: [],
+  },
+];
+
+export const defaultEvents = [
+  {
+    slug: "hackathon-2026",
+    title: "Hackathon 2026",
+    description: "Build something bold with your campus team in a 24-hour coding sprint.",
+    image: "https://picsum.photos/seed/event1/600/400",
+    location: "Main Auditorium",
+    startDate: "2026-04-18T09:00:00.000Z",
+    organizerName: "Tech Club",
+    attendeeIds: [],
+  },
+  {
+    slug: "cultural-fest-night",
+    title: "Cultural Fest Night",
+    description: "Music, dance, theatre, and food stalls across the campus square.",
+    image: "https://picsum.photos/seed/event2/600/400",
+    location: "Open Air Theatre",
+    startDate: "2026-04-25T14:00:00.000Z",
+    organizerName: "Cultural Club",
+    attendeeIds: [],
+  },
+  {
+    slug: "ai-ml-bootcamp",
+    title: "AI/ML Bootcamp",
+    description: "Hands-on workshop for students starting with machine learning projects.",
+    image: "https://picsum.photos/seed/event3/600/400",
+    location: "Computer Science Block",
+    startDate: "2026-04-10T11:00:00.000Z",
+    organizerName: "AI Club",
+    attendeeIds: [],
+  },
+];

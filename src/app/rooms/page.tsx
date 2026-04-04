@@ -5,74 +5,37 @@ import { RoomList } from "@/components/rooms";
 import { RoomCardData } from "@/components/rooms/room-card";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
-import { getStorageItem, setStorageItem } from "@/lib/app-session";
-
-const STORAGE_KEY = "campuslink_rooms";
-
-const defaultRooms: RoomCardData[] = [
-  {
-    id: "1",
-    name: "CSE 2025",
-    description: "Computer Science batch 2025 students",
-    type: "class",
-    membersCount: 156,
-    isJoined: true,
-  },
-  {
-    id: "2",
-    name: "NIT Trichy Campus",
-    description: "Main campus discussions",
-    type: "college",
-    membersCount: 2340,
-    isJoined: true,
-  },
-  {
-    id: "3",
-    name: "Placement Cell",
-    description: "All placement and internship updates",
-    type: "placement",
-    membersCount: 890,
-    isJoined: true,
-  },
-  {
-    id: "4",
-    name: "Tech Club",
-    description: "Technical events and workshops",
-    type: "club",
-    membersCount: 234,
-    isJoined: false,
-  },
-  {
-    id: "5",
-    name: "Hostel A - Boys",
-    description: "Hostel A residents",
-    type: "hostel",
-    membersCount: 312,
-    isJoined: true,
-  },
-  {
-    id: "6",
-    name: "Buy/Sell Books",
-    description: "Buy and sell textbooks",
-    type: "buysell",
-    membersCount: 567,
-    isJoined: false,
-  },
-];
+import { useAppSession } from "@/hooks/use-app-session";
 
 export default function RoomsPage() {
-  const [rooms, setRooms] = useState<RoomCardData[]>(defaultRooms);
+  const { isAuthenticated } = useAppSession();
+  const [rooms, setRooms] = useState<RoomCardData[]>([]);
   const [query, setQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [newRoom, setNewRoom] = useState({ name: "", description: "", type: "study" });
+  const [feedback, setFeedback] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function loadRooms() {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/rooms", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to load rooms right now.");
+        return;
+      }
+      setRooms(data.rooms || []);
+    } catch {
+      setFeedback("Unable to load rooms right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    setRooms(getStorageItem(STORAGE_KEY, defaultRooms));
+    loadRooms();
   }, []);
-
-  useEffect(() => {
-    setStorageItem(STORAGE_KEY, rooms);
-  }, [rooms]);
 
   const filteredRooms = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -85,36 +48,48 @@ export default function RoomsPage() {
   const joinedRooms = filteredRooms.filter((room) => room.isJoined);
   const discoverRooms = filteredRooms.filter((room) => !room.isJoined);
 
-  function toggleJoin(roomId: string) {
-    setRooms((current) =>
-      current.map((room) =>
-        room.id === roomId
-          ? {
-              ...room,
-              isJoined: !room.isJoined,
-              membersCount: room.isJoined ? Math.max(0, room.membersCount - 1) : room.membersCount + 1,
-            }
-          : room
-      )
-    );
+  async function toggleJoin(roomId: string) {
+    setFeedback("");
+    try {
+      const response = await fetch("/api/rooms/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to update room membership.");
+        return;
+      }
+      setRooms((current) => current.map((room) => (room.id === roomId ? data.room : room)));
+    } catch {
+      setFeedback("Unable to update room membership.");
+    }
   }
 
-  function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!newRoom.name.trim()) return;
+    setFeedback("");
 
-    const room: RoomCardData = {
-      id: Date.now().toString(),
-      name: newRoom.name.trim(),
-      description: newRoom.description.trim(),
-      type: newRoom.type,
-      membersCount: 1,
-      isJoined: true,
-    };
+    try {
+      const response = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newRoom),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to create room.");
+        return;
+      }
 
-    setRooms((current) => [room, ...current]);
-    setNewRoom({ name: "", description: "", type: "study" });
-    setShowCreate(false);
+      setRooms((current) => [data.room, ...current]);
+      setNewRoom({ name: "", description: "", type: "study" });
+      setShowCreate(false);
+      setFeedback("Room created and joined successfully.");
+    } catch {
+      setFeedback("Unable to create room.");
+    }
   }
 
   return (
@@ -124,11 +99,23 @@ export default function RoomsPage() {
           <h1 className="text-2xl font-bold">Campus Rooms</h1>
           <p className="text-gray-600">Join rooms, create your own spaces, and keep your community organized.</p>
         </div>
-        <button className="button-clean flex items-center gap-2" onClick={() => setShowCreate((value) => !value)}>
+        <button className="button-clean flex items-center gap-2" onClick={() => setShowCreate((value) => !value)} type="button">
           <Plus className="h-4 w-4" />
           {showCreate ? "Close" : "Create Room"}
         </button>
       </div>
+
+      {!isAuthenticated ? (
+        <div className="mb-6 rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-4 text-sm text-[var(--text-secondary)]">
+          Sign in to create rooms or join shared communities.
+        </div>
+      ) : null}
+
+      {feedback ? (
+        <div className="mb-6 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
+          {feedback}
+        </div>
+      ) : null}
 
       <div className="mb-6">
         <div className="relative max-w-md">
@@ -166,27 +153,35 @@ export default function RoomsPage() {
         </form>
       ) : null}
 
-      <div className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold">Your Rooms</h2>
-        {joinedRooms.length ? (
-          <RoomList rooms={joinedRooms} onToggleJoin={toggleJoin} />
-        ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
-            You have not joined any rooms yet. Join one from the list below or create your own.
+      {isLoading ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-8 text-sm text-[var(--text-secondary)]">
+          Loading rooms...
+        </div>
+      ) : (
+        <>
+          <div className="mb-8">
+            <h2 className="mb-3 text-lg font-semibold">Your Rooms</h2>
+            {joinedRooms.length ? (
+              <RoomList rooms={joinedRooms} onToggleJoin={toggleJoin} />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
+                You have not joined any rooms yet. Join one from the list below or create your own.
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold">Discover More</h2>
-        {discoverRooms.length ? (
-          <RoomList rooms={discoverRooms} onToggleJoin={toggleJoin} />
-        ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
-            No more rooms match this search right now.
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Discover More</h2>
+            {discoverRooms.length ? (
+              <RoomList rooms={discoverRooms} onToggleJoin={toggleJoin} />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
+                No more rooms match this search right now.
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }

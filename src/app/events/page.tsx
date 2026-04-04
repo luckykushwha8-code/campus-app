@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, CalendarDays } from "lucide-react";
-import { getStorageItem, setStorageItem } from "@/lib/app-session";
+import { useAppSession } from "@/hooks/use-app-session";
 
 type EventItem = {
   id: string;
@@ -27,44 +27,6 @@ type EventForm = {
   description: string;
 };
 
-const STORAGE_KEY = "campuslink_events";
-
-const defaultEvents: EventItem[] = [
-  {
-    id: "1",
-    title: "Hackathon 2026",
-    description: "Build something bold with your campus team in a 24-hour coding sprint.",
-    image: "https://picsum.photos/seed/event1/600/400",
-    location: "Main Auditorium",
-    startDate: "2026-04-18T09:00:00.000Z",
-    organizer: { name: "Tech Club" },
-    attendees: 156,
-    isRegistered: false,
-  },
-  {
-    id: "2",
-    title: "Cultural Fest Night",
-    description: "Music, dance, theatre, and food stalls across the campus square.",
-    image: "https://picsum.photos/seed/event2/600/400",
-    location: "Open Air Theatre",
-    startDate: "2026-04-25T14:00:00.000Z",
-    organizer: { name: "Cultural Club" },
-    attendees: 423,
-    isRegistered: true,
-  },
-  {
-    id: "3",
-    title: "AI/ML Bootcamp",
-    description: "Hands-on workshop for students starting with machine learning projects.",
-    image: "https://picsum.photos/seed/event3/600/400",
-    location: "Computer Science Block",
-    startDate: "2026-04-10T11:00:00.000Z",
-    organizer: { name: "AI Club" },
-    attendees: 67,
-    isRegistered: false,
-  },
-];
-
 const emptyForm: EventForm = {
   title: "",
   location: "",
@@ -73,18 +35,34 @@ const emptyForm: EventForm = {
 };
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<EventItem[]>(defaultEvents);
+  const { isAuthenticated } = useAppSession();
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [query, setQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<EventForm>(emptyForm);
+  const [feedback, setFeedback] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function loadEvents() {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/events", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to load events right now.");
+        return;
+      }
+      setEvents(data.events || []);
+    } catch {
+      setFeedback("Unable to load events right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    setEvents(getStorageItem(STORAGE_KEY, defaultEvents));
+    loadEvents();
   }, []);
-
-  useEffect(() => {
-    setStorageItem(STORAGE_KEY, events);
-  }, [events]);
 
   const filteredEvents = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -103,42 +81,49 @@ export default function EventsPage() {
   const upcomingEvents = filteredEvents.filter((event) => new Date(event.startDate).getTime() >= Date.now());
   const pastEvents = filteredEvents.filter((event) => new Date(event.startDate).getTime() < Date.now());
 
-  function toggleRegistration(eventId: string) {
-    setEvents((current) =>
-      current.map((event) =>
-        event.id === eventId
-          ? {
-              ...event,
-              isRegistered: !event.isRegistered,
-              attendees: event.isRegistered ? Math.max(0, event.attendees - 1) : event.attendees + 1,
-            }
-          : event
-      )
-    );
+  async function toggleRegistration(eventId: string) {
+    setFeedback("");
+    try {
+      const response = await fetch("/api/events/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to update registration.");
+        return;
+      }
+      setEvents((current) => current.map((event) => (event.id === eventId ? data.event : event)));
+    } catch {
+      setFeedback("Unable to update registration.");
+    }
   }
 
-  function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFeedback("");
 
-    if (!form.title.trim() || !form.location.trim() || !form.startDate) {
-      return;
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to create event.");
+        return;
+      }
+
+      setEvents((current) => [data.event, ...current]);
+      setForm(emptyForm);
+      setShowCreate(false);
+      setFeedback("Event created and registered successfully.");
+    } catch {
+      setFeedback("Unable to create event.");
     }
-
-    const newEvent: EventItem = {
-      id: `${Date.now()}`,
-      title: form.title.trim(),
-      description: form.description.trim() || "Created by a campus user.",
-      location: form.location.trim(),
-      startDate: new Date(form.startDate).toISOString(),
-      organizer: { name: "Campus User" },
-      attendees: 1,
-      isRegistered: true,
-      image: `https://picsum.photos/seed/event-${Date.now()}/600/400`,
-    };
-
-    setEvents((current) => [newEvent, ...current]);
-    setForm(emptyForm);
-    setShowCreate(false);
   }
 
   return (
@@ -156,6 +141,18 @@ export default function EventsPage() {
             {showCreate ? "Close" : "Create Event"}
           </Button>
         </div>
+
+        {!isAuthenticated ? (
+          <div className="mb-6 rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-4 text-sm text-[var(--text-secondary)]">
+            Sign in to register for events or publish your own.
+          </div>
+        ) : null}
+
+        {feedback ? (
+          <div className="mb-6 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
+            {feedback}
+          </div>
+        ) : null}
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
@@ -225,30 +222,36 @@ export default function EventsPage() {
           </form>
         ) : null}
 
-        <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
-            <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-            <TabsTrigger value="my">My Events</TabsTrigger>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="past">Past</TabsTrigger>
-          </TabsList>
+        {isLoading ? (
+          <div className="rounded-[28px] border border-dashed border-[var(--border-color)] bg-white px-6 py-10 text-center text-sm text-[var(--text-secondary)]">
+            Loading events...
+          </div>
+        ) : (
+          <Tabs defaultValue="upcoming" className="w-full">
+            <TabsList className="mb-6 grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
+              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="my">My Events</TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="past">Past</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="upcoming">
-            <EventGrid events={upcomingEvents} onToggleRegistration={toggleRegistration} emptyMessage="No upcoming events match your search yet." />
-          </TabsContent>
+            <TabsContent value="upcoming">
+              <EventGrid events={upcomingEvents} onToggleRegistration={toggleRegistration} emptyMessage="No upcoming events match your search yet." />
+            </TabsContent>
 
-          <TabsContent value="my">
-            <EventGrid events={registeredEvents} onToggleRegistration={toggleRegistration} emptyMessage="Register for an event and it will show up here." />
-          </TabsContent>
+            <TabsContent value="my">
+              <EventGrid events={registeredEvents} onToggleRegistration={toggleRegistration} emptyMessage="Register for an event and it will show up here." />
+            </TabsContent>
 
-          <TabsContent value="all">
-            <EventGrid events={filteredEvents} onToggleRegistration={toggleRegistration} emptyMessage="No events found. Try another search or create one." />
-          </TabsContent>
+            <TabsContent value="all">
+              <EventGrid events={filteredEvents} onToggleRegistration={toggleRegistration} emptyMessage="No events found. Try another search or create one." />
+            </TabsContent>
 
-          <TabsContent value="past">
-            <EventGrid events={pastEvents} onToggleRegistration={toggleRegistration} emptyMessage="Past events will show up here after their date passes." />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="past">
+              <EventGrid events={pastEvents} onToggleRegistration={toggleRegistration} emptyMessage="Past events will show up here after their date passes." />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </div>
   );
