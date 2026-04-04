@@ -1,11 +1,11 @@
 import { connectDB } from "@/lib/db";
-import { getServerSession } from "@/lib/server-auth";
+import { getRequestUserId } from "@/lib/request-auth";
 import { ClubModel } from "@/models/Club";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.userId) {
+    const userId = await getRequestUserId(req);
+    if (!userId) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -20,10 +20,10 @@ export async function POST(req: Request) {
       return Response.json({ ok: false, error: "Club not found" }, { status: 404 });
     }
 
-    const joined = club.memberIds.includes(session.userId);
+    const joined = club.memberIds.includes(userId);
     club.memberIds = joined
-      ? club.memberIds.filter((id: string) => id !== session.userId)
-      : [...club.memberIds, session.userId];
+      ? club.memberIds.filter((id: string) => id !== userId)
+      : [...club.memberIds, userId];
     await club.save();
 
     return Response.json({

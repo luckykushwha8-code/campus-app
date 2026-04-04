@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ClubCard } from "@/components/utilities";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ type ClubItem = {
 };
 
 export default function ClubsPage() {
-  const { isAuthenticated } = useAppSession();
+  const { isAuthenticated, token } = useAppSession();
   const [clubs, setClubs] = useState<ClubItem[]>([]);
   const [query, setQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -25,10 +25,14 @@ export default function ClubsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({ name: "", description: "", logo: "" });
 
-  async function loadClubs() {
+  const loadClubs = useCallback(async () => {
     setIsLoading(true);
+    setFeedback("");
     try {
-      const response = await fetch("/api/clubs", { cache: "no-store" });
+      const response = await fetch("/api/clubs", {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const data = await response.json();
       if (!response.ok || !data.ok) {
         setFeedback(data.error || "Unable to load clubs.");
@@ -40,11 +44,11 @@ export default function ClubsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [token]);
 
   useEffect(() => {
     loadClubs();
-  }, []);
+  }, [loadClubs]);
 
   const filtered = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -57,7 +61,10 @@ export default function ClubsPage() {
     try {
       const response = await fetch("/api/clubs/join", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ clubId }),
       });
       const data = await response.json();
@@ -77,7 +84,10 @@ export default function ClubsPage() {
     try {
       const response = await fetch("/api/clubs", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(form),
       });
       const data = await response.json();
@@ -159,11 +169,17 @@ export default function ClubsPage() {
           </TabsList>
 
           <TabsContent value="all">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((club) => (
-                <ClubCard key={club.id} club={club} onToggleMembership={toggleMembership} />
-              ))}
-            </div>
+            {filtered.length ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filtered.map((club) => (
+                  <ClubCard key={club.id} club={club} onToggleMembership={toggleMembership} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
+                No clubs match your search yet.
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="joined">
@@ -179,11 +195,17 @@ export default function ClubsPage() {
           </TabsContent>
 
           <TabsContent value="popular">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {popular.map((club) => (
-                <ClubCard key={club.id} club={club} onToggleMembership={toggleMembership} />
-              ))}
-            </div>
+            {popular.length ? (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {popular.map((club) => (
+                  <ClubCard key={club.id} club={club} onToggleMembership={toggleMembership} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
+                No clubs are available yet.
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       )}

@@ -1,6 +1,6 @@
 import { connectDB } from "@/lib/db";
 import { defaultClubs } from "@/lib/community-data";
-import { getServerSession } from "@/lib/server-auth";
+import { getRequestUserId } from "@/lib/request-auth";
 import { ClubModel } from "@/models/Club";
 
 function slugify(value: string) {
@@ -14,11 +14,11 @@ async function ensureSeeded() {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await connectDB();
     await ensureSeeded();
-    const session = await getServerSession();
+    const userId = await getRequestUserId(req);
     const clubs = await ClubModel.find().sort({ createdAt: -1 }).lean();
     return Response.json({
       ok: true,
@@ -28,7 +28,7 @@ export async function GET() {
         description: club.description || "",
         logo: club.logo || "",
         membersCount: club.memberIds?.length || 0,
-        isMember: session ? club.memberIds?.includes(session.userId) : false,
+        isMember: userId ? club.memberIds?.includes(userId) : false,
       })),
     });
   } catch {
@@ -38,8 +38,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.userId) {
+    const userId = await getRequestUserId(req);
+    if (!userId) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
@@ -58,8 +58,8 @@ export async function POST(req: Request) {
       name,
       description,
       logo,
-      creatorId: session.userId,
-      memberIds: [session.userId],
+      creatorId: userId,
+      memberIds: [userId],
     });
 
     return Response.json({
