@@ -1,51 +1,213 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { formatDate } from "@/lib/utils";
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, BadgeCheck, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
+import { useAppSession } from "@/hooks/use-app-session";
+import type { FeedComment, FeedPost } from "@/components/feed/types";
 
 interface PostCardProps {
-  post: {
-    id: string;
-    content: string;
-    images?: string[];
-    author: {
-      id: string;
-      name: string;
-      username: string;
-      avatar?: string;
-      institution?: string;
-      isVerified?: boolean;
-    };
-    likesCount: number;
-    commentsCount: number;
-    isLiked: boolean;
-    isSaved: boolean;
-    isAnonymous?: boolean;
-    createdAt: string;
-  };
+  post: FeedPost;
+  onDeleted?: (postId: string) => void;
+  onUpdated?: (post: FeedPost) => void;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
+  const { token, isAuthenticated } = useAppSession();
   const [liked, setLiked] = useState(post.isLiked);
-  const [saved, setSaved] = useState(post.isSaved);
   const [likesCount, setLikesCount] = useState(post.likesCount);
+  const [commentsCount, setCommentsCount] = useState(post.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const heartRef = useRef<HTMLDivElement>(null);
+  const [comments, setComments] = useState<FeedComment[]>([]);
+  const [commentsLoaded, setCommentsLoaded] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentStatus, setCommentStatus] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  function handleLike() {
-    setLiked((value) => !value);
-    setLikesCount((value) => (liked ? value - 1 : value + 1));
+  async function loadComments(force = false) {
+    if ((commentsLoaded && !force) || commentsLoading) {
+      return;
+    }
+
+    setCommentsLoading(true);
+    setCommentStatus("");
+    try {
+      const response = await fetch(`/api/posts/comments?postId=${post.id}`, {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        setCommentStatus(data.error || "Unable to load comments right now.");
+        return;
+      }
+
+      setComments(data.comments || []);
+      setCommentsLoaded(true);
+    } catch {
+      setCommentStatus("Unable to load comments right now.");
+    } finally {
+      setCommentsLoading(false);
+    }
   }
 
-  function handleDoubleTap() {
-    if (!liked) {
-      handleLike();
-      heartRef.current?.classList.add("animate-heart");
-      setTimeout(() => heartRef.current?.classList.remove("animate-heart"), 300);
+  async function handleToggleComments() {
+    const next = !showComments;
+    setShowComments(next);
+    if (next) {
+      await loadComments();
+    }
+  }
+
+  async function handleLike() {
+    if (!isAuthenticated || !token || isLiking) {
+      return;
+    }
+
+    const previousLiked = liked;
+    const previousCount = likesCount;
+    const nextLiked = !liked;
+    const nextCount = nextLiked ? likesCount + 1 : Math.max(0, likesCount - 1);
+
+    setLiked(nextLiked);
+    setLikesCount(nextCount);
+    setIsLiking(true);
+
+    try {
+      const response = await fetch("/api/posts/like", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ postId: post.id }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setLiked(previousLiked);
+        setLikesCount(previousCount);
+        return;
+      }
+
+      setLiked(Boolean(data.liked));
+      setLikesCount(Number(data.likesCount || 0));
+      onUpdated?.({ ...post, isLiked: Boolean(data.liked), likesCount: Number(data.likesCount || 0), commentsCount });
+    } catch {
+      setLiked(previousLiked);
+      setLikesCount(previousCount);
+    } finally {
+      setIsLiking(false);
+    }
+  }
+
+  async function handleSubmitComment() {
+    if (!isAuthenticated || !token || !commentText.trim() || isSubmittingComment) {
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    setCommentStatus("");
+
+    try {
+      const response = await fetch("/api/posts/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          postId: post.id,
+          content: commentText.trim(),
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok || !data.comment) {
+        setCommentStatus(data.error || "Unable to add your comment.");
+        return;
+      }
+
+      const nextCommentsCount = Number(data.commentsCount || commentsCount + 1);
+      setComments((current) => [...current, data.comment]);
+      setCommentsCount(nextCommentsCount);
+      setCommentText("");
+      setCommentsLoaded(true);
+      onUpdated?.({
+        ...post,
+        isLiked: liked,
+        likesCount,
+        commentsCount: nextCommentsCount,
+      });
+    } catch {
+      setCommentStatus("Unable to add your comment.");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/posts/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setCommentStatus(data.error || "Unable to delete the comment.");
+        return;
+      }
+
+      const nextCommentsCount = Math.max(0, commentsCount - 1);
+      setComments((current) => current.filter((item) => item.id !== commentId));
+      setCommentsCount(nextCommentsCount);
+      onUpdated?.({ ...post, isLiked: liked, likesCount, commentsCount: nextCommentsCount });
+    } catch {
+      setCommentStatus("Unable to delete the comment.");
+    }
+  }
+
+  async function handleDeletePost() {
+    if (!token || !post.isOwner || isDeleting) {
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this post?");
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setCommentStatus(data.error || "Unable to delete the post.");
+        return;
+      }
+
+      onDeleted?.(post.id);
+    } catch {
+      setCommentStatus("Unable to delete the post.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -53,21 +215,7 @@ export function PostCard({ post }: PostCardProps) {
     <article className="app-surface overflow-hidden">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 overflow-hidden rounded-full">
-            {post.isAnonymous ? (
-              <div className="flex h-full w-full items-center justify-center bg-[var(--bg-secondary)] text-sm font-semibold text-[var(--accent)]">
-                A
-              </div>
-            ) : (
-              <Image
-                src={post.author.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author.username}`}
-                alt={post.author.name}
-                className="h-full w-full object-cover"
-                width={44}
-                height={44}
-              />
-            )}
-          </div>
+          <Avatar alt={post.isAnonymous ? "Anonymous" : post.author.name} src={post.isAnonymous ? "" : post.author.avatarUrl} className="h-11 w-11" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-[var(--text-primary)]">
@@ -83,9 +231,11 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         </div>
 
-        <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)]" type="button">
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
+        {post.isOwner ? (
+          <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-red-600" onClick={handleDeletePost} type="button">
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </button>
+        ) : null}
       </div>
 
       <div className="px-4 pb-4">
@@ -93,75 +243,74 @@ export function PostCard({ post }: PostCardProps) {
       </div>
 
       {post.images?.length ? (
-        <div className="relative px-4 pb-4" onDoubleClick={handleDoubleTap}>
+        <div className="relative px-4 pb-4">
           <div className="overflow-hidden rounded-2xl bg-[var(--bg-secondary)]">
             <Image src={post.images[0]} alt="" className="h-full w-full object-cover" width={900} height={520} />
-          </div>
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100">
-            <div ref={heartRef} className="hidden">
-              <Heart className="h-14 w-14 fill-[var(--accent)] text-[var(--accent)]" />
-            </div>
           </div>
         </div>
       ) : null}
 
       <div className="border-t border-[var(--border-color)] px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleLike}
-              className={cn(
-                "app-panel flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-                liked ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              )}
-              type="button"
-            >
-              <Heart className={cn("h-4 w-4", liked && "fill-current")} />
-            </button>
-            <button
-              onClick={() => setShowComments((value) => !value)}
-              className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              type="button"
-            >
-              <MessageCircle className="h-4 w-4" />
-            </button>
-            <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)]" type="button">
-              <Share2 className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setSaved((value) => !value)}
+            onClick={handleLike}
+            disabled={!isAuthenticated || isLiking}
             className={cn(
-              "app-panel flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-              saved ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              "app-panel flex h-10 min-w-[84px] items-center justify-center gap-2 rounded-xl px-3 transition-colors",
+              liked ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             )}
             type="button"
           >
-            <Bookmark className={cn("h-4 w-4", saved && "fill-current")} />
+            <Heart className={cn("h-4 w-4", liked && "fill-current")} />
+            <span className="text-sm">{likesCount}</span>
+          </button>
+          <button
+            onClick={handleToggleComments}
+            className="app-panel flex h-10 min-w-[92px] items-center justify-center gap-2 rounded-xl px-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            type="button"
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">{commentsCount}</span>
           </button>
         </div>
 
-        <div className="mt-3 text-sm font-medium text-[var(--text-secondary)]">{likesCount.toLocaleString()} likes</div>
-
-        {!showComments && post.commentsCount > 0 ? (
-          <button onClick={() => setShowComments(true)} className="mt-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]" type="button">
-            View all {post.commentsCount} comments
-          </button>
-        ) : null}
-
         {showComments ? (
           <div className="mt-4 border-t border-[var(--border-color)] pt-4">
-            <div className="mb-3 space-y-3">
-              {[
-                { user: "amit_k", text: "Great post!" },
-                { user: "sneha_123", text: "This is exactly what we needed." },
-              ].map((comment, idx) => (
-                <div key={idx} className="text-sm">
-                  <span className="font-medium text-[var(--text-primary)]">{comment.user}</span>{" "}
-                  <span className="text-[var(--text-secondary)]">{comment.text}</span>
-                </div>
-              ))}
-            </div>
+            {commentStatus ? (
+              <div className="mb-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+                {commentStatus}
+              </div>
+            ) : null}
+
+            {commentsLoading ? (
+              <div className="mb-3 text-sm text-[var(--text-secondary)]">Loading comments...</div>
+            ) : comments.length ? (
+              <div className="mb-3 space-y-3">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 py-3 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[var(--text-primary)]">{comment.author.name}</span>
+                          <span className="text-xs text-[var(--text-muted)]">@{comment.author.username}</span>
+                          <span className="text-xs text-[var(--text-muted)]">{formatDate(comment.createdAt)}</span>
+                        </div>
+                        <p className="mt-1 whitespace-pre-wrap text-[var(--text-secondary)]">{comment.content}</p>
+                      </div>
+                      {comment.isOwner ? (
+                        <button className="text-xs font-medium text-red-600" onClick={() => handleDeleteComment(comment.id)} type="button">
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mb-3 rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-6 text-sm text-[var(--text-secondary)]">
+                No comments yet. Start the conversation.
+              </div>
+            )}
 
             <div className="flex items-center gap-3 border-t border-[var(--border-color)] pt-3">
               <input
@@ -170,9 +319,10 @@ export function PostCard({ post }: PostCardProps) {
                 onChange={(event) => setCommentText(event.target.value)}
                 placeholder="Add a comment..."
                 className="input-clean flex-1 text-body"
+                maxLength={500}
               />
-              <button disabled={!commentText.trim()} className="button-clean px-4" type="button">
-                Post
+              <button disabled={!commentText.trim() || isSubmittingComment} className="button-clean px-4" onClick={handleSubmitComment} type="button">
+                {isSubmittingComment ? "Posting..." : "Post"}
               </button>
             </div>
           </div>

@@ -1,26 +1,57 @@
-import { connectDB } from '@/lib/db';
-import { NotificationModel } from '@/models/Notification';
+import { connectDB } from "@/lib/db";
+import { serializeNotifications } from "@/lib/notification-service";
+import { getRequestUserId } from "@/lib/request-auth";
+import { NotificationModel } from "@/models/Notification";
 
 export async function GET(req: Request) {
   try {
-    const url = new URL(req.url);
-    const userId = url.searchParams.get('user') || '';
     await connectDB();
-    const notifs = await NotificationModel.find({ userId }).sort({ createdAt: -1 }).limit(50).lean();
-    return new Response(JSON.stringify({ ok: true, notifications: notifs }), { status: 200 });
+    const userId = await getRequestUserId(req);
+
+    if (!userId) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
+    }
+
+    const notifications = await NotificationModel.find({ userId }).sort({ createdAt: -1 }).limit(50).lean();
+    const unreadCount = await NotificationModel.countDocuments({ userId, isRead: false });
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        unreadCount,
+        notifications: await serializeNotifications(notifications),
+      }),
+      { status: 200 }
+    );
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: 'Server error' }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: "Unable to load notifications right now." }), { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function PUT(req: Request) {
   try {
-    const body = await req.json();
-    const { userId, type, payload } = body;
     await connectDB();
-    const notif = await NotificationModel.create({ userId, type, payload, isRead: false });
-    return new Response(JSON.stringify({ ok: true, notification: notif }), { status: 201 });
+    const userId = await getRequestUserId(req);
+
+    if (!userId) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
+    }
+
+    const body = await req.json();
+    const notificationId = String(body.notificationId || "").trim();
+    const markAll = Boolean(body.markAll);
+
+    if (markAll) {
+      await NotificationModel.updateMany({ userId, isRead: false }, { $set: { isRead: true } });
+    } else if (notificationId) {
+      await NotificationModel.findOneAndUpdate({ _id: notificationId, userId }, { $set: { isRead: true } });
+    } else {
+      return new Response(JSON.stringify({ ok: false, error: "Nothing to update." }), { status: 400 });
+    }
+
+    const unreadCount = await NotificationModel.countDocuments({ userId, isRead: false });
+    return new Response(JSON.stringify({ ok: true, unreadCount }), { status: 200 });
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: 'Server error' }), { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: "Unable to update notifications right now." }), { status: 500 });
   }
 }

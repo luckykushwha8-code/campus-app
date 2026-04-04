@@ -6,19 +6,19 @@ import { serializePrivateUser } from '@/lib/user-serialization';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const password = body.password;
+    const password = String(body.password || "");
     const email = body.email?.trim().toLowerCase();
     if (!email || !password) {
-      return new Response(JSON.stringify({ ok: false, error: 'Missing credentials' }), { status: 400 });
+      return new Response(JSON.stringify({ ok: false, error: 'Enter your email and password.' }), { status: 400 });
     }
     await connectDB();
     const user = await UserModel.findOne({ email });
     if (!user || !user.passwordHash) {
-      return new Response(JSON.stringify({ ok: false, error: 'Invalid credentials' }), { status: 400 });
+      return new Response(JSON.stringify({ ok: false, error: 'Invalid email or password.' }), { status: 400 });
     }
     const ok = await comparePassword(password, user.passwordHash);
     if (!ok) {
-      return new Response(JSON.stringify({ ok: false, error: 'Invalid credentials' }), { status: 400 });
+      return new Response(JSON.stringify({ ok: false, error: 'Invalid email or password.' }), { status: 400 });
     }
     const token = signToken({ userId: user._id });
     return new Response(JSON.stringify({

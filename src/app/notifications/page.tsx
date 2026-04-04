@@ -1,142 +1,181 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatRelative } from "date-fns";
-import { Heart, MessageCircle, UserPlus, Bell, Calendar, Briefcase, Users } from "lucide-react";
-import { getStorageItem, setStorageItem } from "@/lib/app-session";
+import { Heart, MessageCircle, Bell } from "lucide-react";
 import { useAppSession } from "@/hooks/use-app-session";
 
-const mockNotifications = [
-  {
-    id: "1",
-    type: "like",
-    title: "Rahul Sharma liked your post",
-    body: "Hey, great post about the hackathon!",
-    avatar: undefined,
-    createdAt: formatRelative(new Date(Date.now() - 3600000), new Date()),
-    isRead: false,
-  },
-  {
-    id: "2",
-    type: "comment",
-    title: "Priya Patel commented on your post",
-    body: "Where can I get those notes?",
-    avatar: undefined,
-    createdAt: formatRelative(new Date(Date.now() - 7200000), new Date()),
-    isRead: false,
-  },
-  {
-    id: "3",
-    type: "friend_request",
-    title: "New friend request",
-    body: "Amit Kumar wants to connect with you",
-    avatar: undefined,
-    createdAt: formatRelative(new Date(Date.now() - 86400000), new Date()),
-    isRead: false,
-  },
-  {
-    id: "4",
-    type: "event",
-    title: "New event: Hackathon 2025",
-    body: "Tech Club has created a new event",
-    avatar: undefined,
-    createdAt: formatRelative(new Date(Date.now() - 86400000 * 2), new Date()),
-    isRead: true,
-  },
-  {
-    id: "5",
-    type: "job",
-    title: "New job opportunity",
-    body: "Google is hiring SDEs - Apply now!",
-    avatar: undefined,
-    createdAt: formatRelative(new Date(Date.now() - 86400000 * 3), new Date()),
-    isRead: true,
-  },
-  {
-    id: "6",
-    type: "room",
-    title: "New message in CSE 2025",
-    body: "Someone mentioned you in a room",
-    avatar: undefined,
-    createdAt: formatRelative(new Date(Date.now() - 86400000 * 4), new Date()),
-    isRead: true,
-  },
-];
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+  actor?: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+};
 
 const typeIcons: Record<string, typeof Heart> = {
   like: Heart,
   comment: MessageCircle,
-  friend_request: UserPlus,
-  event: Calendar,
-  job: Briefcase,
-  room: Users,
 };
 
 export default function NotificationsPage() {
-  const { user } = useAppSession();
-  const storageKey = user ? `campuslink_notifications_${user.id}` : "campuslink_notifications_guest";
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const { token, isAuthenticated } = useAppSession();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState("");
+
+  const loadNotifications = useCallback(async () => {
+    if (!token || !isAuthenticated) {
+      setNotifications([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setStatus("");
+    try {
+      const response = await fetch("/api/notifications", {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setStatus(data.error || "Unable to load notifications.");
+        setNotifications([]);
+        return;
+      }
+
+      setNotifications(data.notifications || []);
+    } catch {
+      setStatus("Unable to load notifications.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token, isAuthenticated]);
 
   useEffect(() => {
-    setNotifications(getStorageItem(storageKey, mockNotifications));
-  }, [storageKey]);
+    loadNotifications();
+  }, [loadNotifications]);
 
-  useEffect(() => {
-    setStorageItem(storageKey, notifications);
-  }, [notifications, storageKey]);
+  async function markAllRead() {
+    if (!token) {
+      return;
+    }
 
-  function markAllRead() {
-    setNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ markAll: true }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setStatus(data.error || "Unable to update notifications.");
+        return;
+      }
+
+      setNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
+    } catch {
+      setStatus("Unable to update notifications.");
+    }
+  }
+
+  async function markOneRead(notificationId: string) {
+    if (!token) {
+      return;
+    }
+
+    setNotifications((current) => current.map((item) => (item.id === notificationId ? { ...item, isRead: true } : item)));
+
+    try {
+      await fetch("/api/notifications", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ notificationId }),
+      });
+    } catch {}
   }
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <div className="mx-auto max-w-screen-lg px-4 py-8">
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
             <h1 className="text-title font-semibold text-[var(--text-primary)]">Notifications</h1>
-            <button className="button-ghost gap-2" onClick={markAllRead} type="button">
-              Mark all read
-            </button>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Likes, comments, and account activity appear here.</p>
           </div>
+          <button className="button-ghost gap-2" onClick={markAllRead} type="button">
+            Mark all read
+          </button>
         </div>
 
-        <div className="space-y-3">
-          {notifications.map((notif) => {
-            const Icon = typeIcons[notif.type] || Bell;
-            return (
-              <div
-                key={notif.id}
-                className={`flex gap-3 p-3 rounded-md border border-[var(--border-color)] hover:bg-[var(--bg-secondary)] transition-colors ${
-                  !notif.isRead ? "bg-[var(--accent)]/10" : ""
-                }`}
-              >
-                <div className="relative">
-                  <Avatar alt="" src={notif.avatar} className="h-8 w-8" />
-                  <div className="absolute -bottom-1 -right-1 p-1">
-                    <Icon className="h-3 w-3 text-[var(--text-muted)]" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-body font-medium text-[var(--text-primary)]">{notif.title}</p>
-                      <p className="text-sm text-[var(--text-secondary)]">{notif.body}</p>
-                      <p className="text-caption text-[var(--text-muted)]">{notif.createdAt}</p>
+        {status ? (
+          <div className="mb-4 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
+            {status}
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="rounded-3xl border border-[var(--border-color)] bg-white p-6 text-sm text-[var(--text-secondary)]">Loading notifications...</div>
+        ) : notifications.length ? (
+          <div className="space-y-3">
+            {notifications.map((notif) => {
+              const Icon = typeIcons[notif.type] || Bell;
+              return (
+                <button
+                  key={notif.id}
+                  className={`flex w-full gap-3 rounded-3xl border border-[var(--border-color)] p-4 text-left transition-colors hover:bg-[var(--bg-secondary)] ${!notif.isRead ? "bg-[var(--accent)]/10" : "bg-white"}`}
+                  onClick={() => markOneRead(notif.id)}
+                  type="button"
+                >
+                  <div className="relative">
+                    <Avatar alt={notif.actor?.name || "Notification"} src={notif.actor?.avatarUrl} className="h-10 w-10" />
+                    <div className="absolute -bottom-1 -right-1 rounded-full bg-white p-1">
+                      <Icon className="h-3 w-3 text-[var(--text-muted)]" />
                     </div>
-                    {!notif.isRead && (
-                      <Badge variant="secondary" className="text-xs">
-                        New
-                      </Badge>
-                    )}
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-body font-medium text-[var(--text-primary)]">{notif.title}</p>
+                        <p className="mt-1 text-sm text-[var(--text-secondary)]">{notif.body}</p>
+                        <p className="mt-2 text-caption text-[var(--text-muted)]">
+                          {formatRelative(new Date(notif.createdAt), new Date())}
+                        </p>
+                      </div>
+                      {!notif.isRead ? (
+                        <Badge variant="secondary" className="text-xs">
+                          New
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-[var(--border-color)] bg-white px-4 py-10 text-center">
+            <p className="text-base font-semibold text-[var(--text-primary)]">No notifications yet</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">When someone likes or comments on your posts, you will see it here.</p>
+          </div>
+        )}
       </div>
     </div>
   );

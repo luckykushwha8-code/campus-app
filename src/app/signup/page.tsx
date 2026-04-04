@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { normalizeUser, saveLocalAccount } from "@/lib/app-session";
+import { normalizeUser } from "@/lib/app-session";
 import { useAppSession } from "@/hooks/use-app-session";
 
 export default function SignupPage() {
@@ -39,30 +39,6 @@ export default function SignupPage() {
 
       const data = await response.json();
       if (!response.ok || !data.ok) {
-        if (data.error === "Server error") {
-          const fallbackUser = normalizeUser({
-            id: `local-${Date.now()}`,
-            email: normalizedEmail,
-            name,
-            collegeName,
-            collegeId,
-            bio: "",
-            avatarUrl: "",
-            verified: false,
-          });
-          saveLocalAccount({
-            email: normalizedEmail,
-            password,
-            user: fallbackUser,
-          });
-          login({
-            token: `local-${Date.now()}`,
-            user: fallbackUser,
-          });
-          router.push("/");
-          router.refresh();
-          return;
-        }
         setError(data.error || "Signup failed. Please try again.");
         return;
       }
@@ -74,28 +50,7 @@ export default function SignupPage() {
       router.push("/");
       router.refresh();
     } catch {
-      const fallbackUser = normalizeUser({
-        id: `local-${Date.now()}`,
-        email: normalizedEmail,
-        name,
-        collegeName,
-        collegeId,
-        bio: "",
-        avatarUrl: "",
-        verified: false,
-      });
-      saveLocalAccount({
-        email: normalizedEmail,
-        password,
-        user: fallbackUser,
-      });
-      login({
-        token: `local-${Date.now()}`,
-        user: fallbackUser,
-      });
-      router.push("/");
-      router.refresh();
-      return;
+      setError("Unable to reach the server. Please try again.");
     } finally {
       setIsLoading(false);
     }

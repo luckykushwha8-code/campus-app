@@ -2,7 +2,7 @@ import { verifyToken } from "@/lib/auth";
 import { getBearerToken, getServerSession } from "@/lib/server-auth";
 import { isMediaStorageConfigured, uploadImageToCloudinary } from "@/lib/media-storage";
 
-const MAX_FILE_SIZE = 2 * 1024 * 1024;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export async function POST(req: Request) {
@@ -43,7 +43,12 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const folder = kind === "cover" ? "campuslink/covers" : "campuslink/avatars";
+    const folder =
+      kind === "cover"
+        ? "campuslink/covers"
+        : kind === "post"
+          ? "campuslink/posts"
+          : "campuslink/avatars";
     const asset = await uploadImageToCloudinary(buffer, folder, file.type);
 
     return new Response(JSON.stringify({ ok: true, asset }), { status: 200 });

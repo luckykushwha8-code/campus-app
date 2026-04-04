@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { useAppSession } from "@/hooks/use-app-session";
-import { Home, Compass, Plus, MessageSquare, User, Search, FileText, Camera, Bell, Sparkles } from "lucide-react";
+import { Home, Compass, Plus, MessageSquare, User, Search, FileText, CalendarDays, Bell, Sparkles } from "lucide-react";
 
 const mobileNavItems = [
   { href: "/", icon: Home, label: "Home" },
@@ -19,7 +19,37 @@ const mobileNavItems = [
 export function Navbar() {
   const pathname = usePathname();
   const [showCreate, setShowCreate] = useState(false);
-  const { user } = useAppSession();
+  const { user, token, isAuthenticated } = useAppSession();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUnreadCount() {
+      if (!token || !isAuthenticated) {
+        setUnreadCount(0);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/notifications", {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (!cancelled && response.ok && data.ok) {
+          setUnreadCount(Number(data.unreadCount || 0));
+        }
+      } catch {}
+    }
+
+    loadUnreadCount();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, isAuthenticated, pathname]);
 
   return (
     <>
@@ -48,8 +78,13 @@ export function Navbar() {
               <Plus className="h-4 w-4" />
               Create
             </button>
-            <Link href="/notifications" className="app-panel flex h-11 w-11 items-center justify-center text-[var(--text-secondary)]">
+            <Link href="/notifications" className="app-panel relative flex h-11 w-11 items-center justify-center text-[var(--text-secondary)]">
               <Bell className="h-4 w-4" />
+              {unreadCount ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
             </Link>
             <Link href="/profile">
               <Avatar alt={user?.name || "User"} src={user?.avatarUrl} className="h-11 w-11 border border-[var(--border-color)]" />
@@ -96,8 +131,8 @@ export function Navbar() {
             </div>
             <div className="space-y-3">
               <CreateAction href="/" icon={FileText} title="New post" description="Share an update with your campus" onClick={() => setShowCreate(false)} />
-              <CreateAction href="/" icon={Camera} title="Story" description="Add a quick visual moment" onClick={() => setShowCreate(false)} />
-              <CreateAction href="/" icon={User} title="Anonymous note" description="Post privately without your identity" onClick={() => setShowCreate(false)} />
+              <CreateAction href="/events" icon={CalendarDays} title="New event" description="Create an event for your campus" onClick={() => setShowCreate(false)} />
+              <CreateAction href="/notes" icon={FileText} title="Upload note" description="Share study material with your campus" onClick={() => setShowCreate(false)} />
             </div>
             <div className="mt-4 flex gap-3">
               <button className="button-outline flex-1" onClick={() => setShowCreate(false)} type="button">

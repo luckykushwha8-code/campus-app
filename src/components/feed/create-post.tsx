@@ -1,58 +1,166 @@
 "use client";
 
-import { useState } from "react";
+import { ChangeEvent, useRef, useState } from "react";
 import Image from "next/image";
-import { Image as ImageIcon, Smile, Globe, Users, BadgeCheck, X, Camera } from "lucide-react";
+import { Image as ImageIcon, Globe, Users, BadgeCheck, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAppSession } from "@/hooks/use-app-session";
+import { Avatar } from "@/components/ui/avatar";
+import type { FeedPost } from "@/components/feed/types";
 
-export function CreatePost() {
+type CreatePostProps = {
+  onCreated: (post: FeedPost) => void;
+};
+
+export function CreatePost({ onCreated }: CreatePostProps) {
+  const { user, token, isAuthenticated } = useAppSession();
   const [content, setContent] = useState("");
-  const [audience, setAudience] = useState<"campus" | "class" | "anonymous">("campus");
+  const [audience, setAudience] = useState<"campus" | "class" | "public">("campus");
   const [showAudience, setShowAudience] = useState(false);
-  const [showMedia, setShowMedia] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [status, setStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function clearSelectedFile() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl("");
+    setSelectedFile(null);
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setStatus("Choose a JPG, PNG, or WEBP image.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setStatus("Choose an image smaller than 5MB.");
+      return;
+    }
+
+    clearSelectedFile();
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setStatus("");
+  }
+
+  async function handleSubmit() {
+    if (!isAuthenticated || !token || !user) {
+      setStatus("Please log in to create a post.");
+      return;
+    }
+
+    if (!content.trim() && !selectedFile) {
+      setStatus("Add some text or an image before posting.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStatus("");
+
+    try {
+      let imageUrl = "";
+
+      if (selectedFile) {
+        const mediaPayload = new FormData();
+        mediaPayload.append("file", selectedFile);
+        mediaPayload.append("kind", "post");
+
+        const uploadResponse = await fetch("/api/media/upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: mediaPayload,
+        });
+        const uploadData = await uploadResponse.json();
+
+        if (!uploadResponse.ok || !uploadData.ok || !uploadData.asset?.url) {
+          setStatus(uploadData.error || "Unable to upload the post image.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        imageUrl = uploadData.asset.url;
+      }
+
+      const response = await fetch("/api/posts/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: content.trim(),
+          images: imageUrl ? [imageUrl] : [],
+          audience,
+          isAnonymous: false,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok || !data.post) {
+        setStatus(data.error || "Unable to create your post right now.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      onCreated(data.post);
+      setContent("");
+      clearSelectedFile();
+      setStatus("Post shared successfully.");
+    } catch {
+      setStatus("Unable to create your post right now.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="app-surface p-4 md:p-5">
       <div className="flex gap-3">
-        <div className="h-11 w-11 overflow-hidden rounded-full">
-          <Image
-            src="https://api.dicebear.com/7.x/avataaars/svg?seed=rahul"
-            alt="User"
-            className="h-full w-full object-cover"
-            width={44}
-            height={44}
-          />
-        </div>
+        <Avatar alt={user?.name || "User"} src={user?.avatarUrl} className="h-11 w-11" />
         <div className="flex-1">
           <textarea
             value={content}
             onChange={(event) => setContent(event.target.value)}
             placeholder="Share something useful with your campus"
-            className="min-h-[68px] w-full resize-none bg-transparent text-sm leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
-            rows={3}
+            className="min-h-[88px] w-full resize-none bg-transparent text-sm leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+            rows={4}
           />
 
-          {showMedia ? (
+          {previewUrl ? (
             <div className="relative mt-3 inline-flex">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl bg-[var(--bg-secondary)]">
-                <Camera className="h-5 w-5 text-[var(--text-muted)]" />
+              <div className="overflow-hidden rounded-2xl bg-[var(--bg-secondary)]">
+                <Image src={previewUrl} alt="Selected upload" className="h-32 w-32 object-cover" width={128} height={128} />
               </div>
-              <button className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70" type="button">
+              <button className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70" onClick={clearSelectedFile} type="button">
                 <X className="h-3.5 w-3.5 text-white" />
               </button>
             </div>
           ) : null}
 
+          {status ? (
+            <div className="mt-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+              {status}
+            </div>
+          ) : null}
+
           <div className="mt-4 flex flex-col gap-3 border-t border-[var(--border-color)] pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <button className="app-panel rounded-xl px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" type="button">
+              <button className="app-panel rounded-xl px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" onClick={() => fileInputRef.current?.click()} type="button">
                 <ImageIcon className="h-4 w-4" />
-              </button>
-              <button className="app-panel rounded-xl px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" type="button">
-                <Smile className="h-4 w-4" />
-              </button>
-              <button className="app-panel rounded-xl px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" onClick={() => setShowMedia((value) => !value)} type="button">
-                <Camera className="h-4 w-4" />
               </button>
 
               <div className="relative">
@@ -60,18 +168,14 @@ export function CreatePost() {
                   onClick={() => setShowAudience((value) => !value)}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
-                    audience === "anonymous"
-                      ? "bg-[var(--accent)]/10 text-[var(--accent)]"
-                      : "app-panel text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    "app-panel text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   )}
                   type="button"
                 >
                   {audience === "campus" ? <Globe className="h-4 w-4" /> : null}
                   {audience === "class" ? <Users className="h-4 w-4" /> : null}
-                  {audience === "anonymous" ? <BadgeCheck className="h-4 w-4" /> : null}
-                  <span>
-                    {audience === "campus" ? "Campus" : audience === "class" ? "Class" : "Anonymous"}
-                  </span>
+                  {audience === "public" ? <BadgeCheck className="h-4 w-4" /> : null}
+                  <span>{audience === "campus" ? "Campus" : audience === "class" ? "Class" : "Public"}</span>
                 </button>
 
                 {showAudience ? (
@@ -84,9 +188,9 @@ export function CreatePost() {
                       <Users className="h-4 w-4" />
                       Class
                     </button>
-                    <button onClick={() => { setAudience("anonymous"); setShowAudience(false); }} className="flex w-full items-center gap-2 px-3 py-3 text-sm hover:bg-[var(--bg-secondary)]" type="button">
+                    <button onClick={() => { setAudience("public"); setShowAudience(false); }} className="flex w-full items-center gap-2 px-3 py-3 text-sm hover:bg-[var(--bg-secondary)]" type="button">
                       <BadgeCheck className="h-4 w-4" />
-                      Anonymous
+                      Public
                     </button>
                   </div>
                 ) : null}
@@ -94,13 +198,23 @@ export function CreatePost() {
             </div>
 
             <button
-              disabled={!content.trim()}
-              className={cn("min-w-[104px]", content.trim() ? "button-clean" : "button-outline")}
+              disabled={isSubmitting || (!content.trim() && !selectedFile)}
+              className={cn("min-w-[120px] justify-center", isSubmitting || content.trim() || selectedFile ? "button-clean" : "button-outline")}
+              onClick={handleSubmit}
               type="button"
             >
-              Post
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                "Post"
+              )}
             </button>
           </div>
+
+          <input ref={fileInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" type="file" onChange={handleFileChange} />
         </div>
       </div>
     </div>
