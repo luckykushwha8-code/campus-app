@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { EventCard } from "@/components/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ type EventItem = {
   organizer: { name: string; avatar?: string };
   attendees: number;
   isRegistered: boolean;
+  isOwner?: boolean;
 };
 
 type EventForm = {
@@ -25,6 +26,7 @@ type EventForm = {
   location: string;
   startDate: string;
   description: string;
+  image: string;
 };
 
 const emptyForm: EventForm = {
@@ -32,37 +34,47 @@ const emptyForm: EventForm = {
   location: "",
   startDate: "",
   description: "",
+  image: "",
 };
 
 export default function EventsPage() {
-  const { isAuthenticated } = useAppSession();
+  const { isAuthenticated, token } = useAppSession();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [query, setQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [feedback, setFeedback] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
 
-  async function loadEvents() {
+  const loadEvents = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/events", { cache: "no-store" });
+      const response = await fetch("/api/events", {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const data = await response.json();
       if (!response.ok || !data.ok) {
         setFeedback(data.error || "Unable to load events right now.");
+        setEvents([]);
         return;
       }
       setEvents(data.events || []);
+      setFeedback("");
     } catch {
       setFeedback("Unable to load events right now.");
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [token]);
 
   useEffect(() => {
     loadEvents();
-  }, []);
+  }, [loadEvents]);
 
   const filteredEvents = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -82,11 +94,20 @@ export default function EventsPage() {
   const pastEvents = filteredEvents.filter((event) => new Date(event.startDate).getTime() < Date.now());
 
   async function toggleRegistration(eventId: string) {
+    if (!token) {
+      setFeedback("Please log in to register for events.");
+      return;
+    }
+
+    setPendingEventId(eventId);
     setFeedback("");
     try {
       const response = await fetch("/api/events/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ eventId }),
       });
       const data = await response.json();
@@ -97,17 +118,28 @@ export default function EventsPage() {
       setEvents((current) => current.map((event) => (event.id === eventId ? data.event : event)));
     } catch {
       setFeedback("Unable to update registration.");
+    } finally {
+      setPendingEventId(null);
     }
   }
 
   async function handleCreateEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!token) {
+      setFeedback("Please log in to create events.");
+      return;
+    }
+
+    setIsCreating(true);
     setFeedback("");
 
     try {
       const response = await fetch("/api/events", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(form),
       });
 
@@ -123,6 +155,43 @@ export default function EventsPage() {
       setFeedback("Event created and registered successfully.");
     } catch {
       setFeedback("Unable to create event.");
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleDeleteEvent(eventId: string) {
+    if (!token) {
+      setFeedback("Please log in to delete events.");
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this event?");
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingEventId(eventId);
+    setFeedback("");
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to delete event.");
+        return;
+      }
+
+      setEvents((current) => current.filter((event) => event.id !== eventId));
+      setFeedback("Event deleted successfully.");
+    } catch {
+      setFeedback("Unable to delete event.");
+    } finally {
+      setDeletingEventId(null);
     }
   }
 
@@ -182,6 +251,7 @@ export default function EventsPage() {
                   value={form.title}
                   onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                   placeholder="Campus startup pitch night"
+                  required
                 />
               </div>
               <div>
@@ -190,6 +260,7 @@ export default function EventsPage() {
                   value={form.location}
                   onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))}
                   placeholder="Innovation Lab"
+                  required
                 />
               </div>
             </div>
@@ -200,20 +271,30 @@ export default function EventsPage() {
                   type="datetime-local"
                   value={form.startDate}
                   onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))}
+                  required
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Description</label>
+                <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Cover image URL</label>
                 <Input
-                  value={form.description}
-                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                  placeholder="Tell students what to expect"
+                  value={form.image}
+                  onChange={(event) => setForm((current) => ({ ...current, image: event.target.value }))}
+                  placeholder="https://..."
                 />
               </div>
             </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Description</label>
+              <textarea
+                className="input-clean min-h-[120px] w-full resize-none"
+                value={form.description}
+                onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                placeholder="Tell students what to expect"
+              />
+            </div>
             <div className="flex gap-3">
-              <button className="button-clean" type="submit">
-                Publish event
+              <button className="button-clean" disabled={isCreating} type="submit">
+                {isCreating ? "Publishing..." : "Publish event"}
               </button>
               <button className="button-outline" type="button" onClick={() => setShowCreate(false)}>
                 Cancel
@@ -236,19 +317,19 @@ export default function EventsPage() {
             </TabsList>
 
             <TabsContent value="upcoming">
-              <EventGrid events={upcomingEvents} onToggleRegistration={toggleRegistration} emptyMessage="No upcoming events match your search yet." />
+              <EventGrid events={upcomingEvents} onToggleRegistration={toggleRegistration} onDeleteEvent={handleDeleteEvent} pendingEventId={pendingEventId} deletingEventId={deletingEventId} emptyMessage="No upcoming events match your search yet." />
             </TabsContent>
 
             <TabsContent value="my">
-              <EventGrid events={registeredEvents} onToggleRegistration={toggleRegistration} emptyMessage="Register for an event and it will show up here." />
+              <EventGrid events={registeredEvents} onToggleRegistration={toggleRegistration} onDeleteEvent={handleDeleteEvent} pendingEventId={pendingEventId} deletingEventId={deletingEventId} emptyMessage="Register for an event and it will show up here." />
             </TabsContent>
 
             <TabsContent value="all">
-              <EventGrid events={filteredEvents} onToggleRegistration={toggleRegistration} emptyMessage="No events found. Try another search or create one." />
+              <EventGrid events={filteredEvents} onToggleRegistration={toggleRegistration} onDeleteEvent={handleDeleteEvent} pendingEventId={pendingEventId} deletingEventId={deletingEventId} emptyMessage="No events found. Try another search or create one." />
             </TabsContent>
 
             <TabsContent value="past">
-              <EventGrid events={pastEvents} onToggleRegistration={toggleRegistration} emptyMessage="Past events will show up here after their date passes." />
+              <EventGrid events={pastEvents} onToggleRegistration={toggleRegistration} onDeleteEvent={handleDeleteEvent} pendingEventId={pendingEventId} deletingEventId={deletingEventId} emptyMessage="Past events will show up here after their date passes." />
             </TabsContent>
           </Tabs>
         )}
@@ -260,10 +341,16 @@ export default function EventsPage() {
 function EventGrid({
   events,
   onToggleRegistration,
+  onDeleteEvent,
+  pendingEventId,
+  deletingEventId,
   emptyMessage,
 }: {
   events: EventItem[];
   onToggleRegistration: (eventId: string) => void;
+  onDeleteEvent: (eventId: string) => void;
+  pendingEventId: string | null;
+  deletingEventId: string | null;
   emptyMessage: string;
 }) {
   if (!events.length) {
@@ -277,7 +364,14 @@ function EventGrid({
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {events.map((event) => (
-        <EventCard key={event.id} event={event} onToggleRegistration={onToggleRegistration} />
+        <EventCard
+          key={event.id}
+          event={event}
+          onToggleRegistration={onToggleRegistration}
+          onDelete={onDeleteEvent}
+          isSaving={pendingEventId === event.id}
+          isDeleting={deletingEventId === event.id}
+        />
       ))}
     </div>
   );

@@ -1,9 +1,10 @@
 "use client";
+import Link from "next/link";
 import Image from "next/image";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Calendar, MapPin, Users } from "lucide-react";
+import { Calendar, MapPin, Users, ArrowRight, Trash2 } from "lucide-react";
 
 interface EventCardProps {
   event: {
@@ -16,11 +17,15 @@ interface EventCardProps {
     organizer: { name: string; avatar?: string };
     attendees: number;
     isRegistered: boolean;
+    isOwner?: boolean;
   };
   onToggleRegistration?: (eventId: string) => void;
+  onDelete?: (eventId: string) => void;
+  isSaving?: boolean;
+  isDeleting?: boolean;
 }
 
-export function EventCard({ event, onToggleRegistration }: EventCardProps) {
+export function EventCard({ event, onToggleRegistration, onDelete, isSaving, isDeleting }: EventCardProps) {
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       {event.image && (
@@ -54,9 +59,25 @@ export function EventCard({ event, onToggleRegistration }: EventCardProps) {
             <Avatar alt={event.organizer.name} src={event.organizer.avatar} />
             <span className="text-sm text-gray-600">{event.organizer.name}</span>
           </div>
-          <Button variant={event.isRegistered ? "outline" : "default"} size="sm" onClick={() => onToggleRegistration?.(event.id)}>
-            {event.isRegistered ? "Registered" : "Register"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href={`/events/${event.id}`} className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">
+              Open
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+            <Button variant={event.isRegistered ? "outline" : "default"} size="sm" onClick={() => onToggleRegistration?.(event.id)} disabled={isSaving}>
+              {isSaving ? "Saving..." : event.isRegistered ? "Leave" : "Register"}
+            </Button>
+            {event.isOwner && onDelete ? (
+              <button
+                className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                onClick={() => onDelete(event.id)}
+                disabled={isDeleting}
+                type="button"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

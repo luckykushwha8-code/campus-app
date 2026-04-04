@@ -10,6 +10,7 @@ export interface IEvent extends Document {
   organizerName: string;
   attendeeIds: string[];
   creatorId?: string;
+  creatorAvatarUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +26,7 @@ const EventSchema = new Schema<IEvent>(
     organizerName: { type: String, required: true },
     attendeeIds: { type: [String], default: [] },
     creatorId: { type: String },
+    creatorAvatarUrl: { type: String },
   },
   { timestamps: true }
 );
