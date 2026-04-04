@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db";
+import { getRequestUser } from "@/lib/request-auth";
+import { serializeConversations, serializeMessage } from "@/lib/chat-serialization";
 import { defaultConversations, defaultMessages } from "@/lib/chat-data";
-import { getServerSession } from "@/lib/server-auth";
 import { ConversationModel, MessageModel } from "@/models/Chat";
 
 async function ensureSeeded() {
@@ -38,41 +39,46 @@ export async function GET(req: Request) {
   try {
     await connectDB();
     await ensureSeeded();
-    const session = await getServerSession();
+    const user = await getRequestUser(req);
+
+    if (!user?._id) {
+      return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentUserId = String(user._id);
     const url = new URL(req.url);
     const conversationId = url.searchParams.get("conversationId");
 
     if (conversationId) {
+      const conversation = await ConversationModel.findById(conversationId).lean();
+      if (!conversation) {
+        return Response.json({ ok: false, error: "Conversation not found." }, { status: 404 });
+      }
+
+      const canAccess =
+        conversation.isGroup || (conversation.participantIds || []).includes(currentUserId);
+      if (!canAccess) {
+        return Response.json({ ok: false, error: "Forbidden" }, { status: 403 });
+      }
+
       const messages = await MessageModel.find({ conversationId }).sort({ createdAt: 1 }).limit(100).lean();
       return Response.json({
         ok: true,
-        messages: messages.map((message: any) => ({
-          id: String(message._id),
-          conversationId: message.conversationId,
-          senderId: message.senderId,
-          senderName: message.senderName || "Campus User",
-          senderAvatar: message.senderAvatar || "",
-          content: message.content,
-          createdAt: new Date(message.createdAt).toISOString(),
-          isOwn: session ? message.senderId === session.userId : false,
-        })),
+        messages: messages.map((message: any) => serializeMessage(message, currentUserId)),
       });
     }
 
-    const conversations = await ConversationModel.find().sort({ lastActivity: -1 }).lean();
+    const conversations = await ConversationModel.find({
+      $or: [{ isGroup: true }, { participantIds: currentUserId }],
+    })
+      .sort({ lastActivity: -1 })
+      .lean();
+
     return Response.json({
       ok: true,
-      conversations: conversations.map((conversation: any) => ({
-        id: String(conversation._id),
-        name: conversation.name,
-        avatar: conversation.avatar || "",
-        lastMessage: conversation.lastMessage || "Start the conversation",
-        time: conversation.lastActivity ? new Date(conversation.lastActivity).toISOString() : new Date().toISOString(),
-        unread: 0,
-        isGroup: Boolean(conversation.isGroup),
-      })),
+      conversations: await serializeConversations(conversations, currentUserId),
     });
   } catch {
-    return Response.json({ ok: false, error: "Server error" }, { status: 500 });
+    return Response.json({ ok: false, error: "Unable to load conversations right now." }, { status: 500 });
   }
 }

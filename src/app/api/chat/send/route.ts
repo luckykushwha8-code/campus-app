@@ -1,39 +1,48 @@
 import { connectDB } from "@/lib/db";
-import { getServerSession } from "@/lib/server-auth";
+import { createNotification } from "@/lib/notification-service";
+import { getRequestUser } from "@/lib/request-auth";
+import { serializeMessage } from "@/lib/chat-serialization";
 import { ConversationModel, MessageModel } from "@/models/Chat";
-import { UserModel } from "@/models/User";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.userId) {
+    await connectDB();
+    const user = await getRequestUser(req);
+    if (!user?._id) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    const conversationId = body.conversationId;
-    const content = body.content?.trim();
+    const conversationId = String(body.conversationId || "").trim();
+    const content = String(body.content || "").trim();
 
     if (!conversationId || !content) {
-      return Response.json({ ok: false, error: "Missing message details" }, { status: 400 });
+      return Response.json({ ok: false, error: "Enter a message before sending." }, { status: 400 });
     }
 
-    await connectDB();
+    if (content.length > 1000) {
+      return Response.json({ ok: false, error: "Messages must stay under 1000 characters." }, { status: 400 });
+    }
+
     const conversation = await ConversationModel.findById(conversationId);
     if (!conversation) {
-      return Response.json({ ok: false, error: "Conversation not found" }, { status: 404 });
+      return Response.json({ ok: false, error: "Conversation not found." }, { status: 404 });
     }
 
-    if (!conversation.participantIds.includes(session.userId)) {
-      conversation.participantIds = [...conversation.participantIds, session.userId];
+    const currentUserId = String(user._id);
+    if (!conversation.isGroup && !conversation.participantIds.includes(currentUserId)) {
+      return Response.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
-    const user = await UserModel.findById(session.userId).lean();
+    if (conversation.isGroup && !conversation.participantIds.includes(currentUserId)) {
+      conversation.participantIds = [...new Set([...conversation.participantIds, currentUserId])];
+    }
+
     const message = await MessageModel.create({
       conversationId: String(conversation._id),
-      senderId: session.userId,
-      senderName: user?.name || "Campus User",
-      senderAvatar: user?.avatarUrl || "",
+      senderId: currentUserId,
+      senderName: user.name || "Campus User",
+      senderAvatar: user.avatarUrl || "",
       content,
     });
 
@@ -41,20 +50,30 @@ export async function POST(req: Request) {
     conversation.lastActivity = new Date();
     await conversation.save();
 
-    return Response.json({
-      ok: true,
-      message: {
-        id: String(message._id),
-        conversationId: message.conversationId,
-        senderId: message.senderId,
-        senderName: message.senderName || "Campus User",
-        senderAvatar: message.senderAvatar || "",
-        content: message.content,
-        createdAt: new Date(message.createdAt).toISOString(),
-        isOwn: true,
+    if (!conversation.isGroup) {
+      const recipientId = (conversation.participantIds || []).find((id: string) => id !== currentUserId);
+      if (recipientId) {
+        await createNotification({
+          userId: recipientId,
+          type: "message",
+          payload: {
+            actorId: currentUserId,
+            actorName: user.name || "",
+            actorAvatarUrl: user.avatarUrl || "",
+            message: content,
+          },
+        });
+      }
+    }
+
+    return Response.json(
+      {
+        ok: true,
+        message: serializeMessage(message.toObject(), currentUserId),
       },
-    }, { status: 201 });
+      { status: 201 }
+    );
   } catch {
-    return Response.json({ ok: false, error: "Server error" }, { status: 500 });
+    return Response.json({ ok: false, error: "Unable to send message right now." }, { status: 500 });
   }
 }

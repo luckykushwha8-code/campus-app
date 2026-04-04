@@ -18,6 +18,7 @@ export interface IConversation extends Document {
   avatar?: string;
   lastMessage?: string;
   lastActivity?: Date;
+  createdBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +39,7 @@ const ConversationSchema = new Schema<IConversation>({
   participantIds: { type: [String], default: [] },
   lastMessage: { type: String },
   lastActivity: { type: Date, default: Date.now },
+  createdBy: { type: String },
 }, { timestamps: true });
 
 export const MessageModel = models.Message || model<IMessage>("Message", MessageSchema);

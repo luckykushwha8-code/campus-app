@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAppSession } from "@/hooks/use-app-session";
-import { Plus, Search, Send, Phone, Video, MoreVertical } from "lucide-react";
+import { Plus, Search, Send } from "lucide-react";
 
 type Conversation = {
   id: string;
@@ -18,6 +18,7 @@ type Conversation = {
   time: string;
   unread: number;
   isGroup: boolean;
+  subtitle?: string;
 };
 
 type Message = {
@@ -32,13 +33,19 @@ type Message = {
 };
 
 export default function MessagesPage() {
-  const { isAuthenticated } = useAppSession();
+  const { isAuthenticated, token } = useAppSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState("");
   const [search, setSearch] = useState("");
   const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [showCreateChat, setShowCreateChat] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedConversation = useMemo(
@@ -46,13 +53,21 @@ export default function MessagesPage() {
     [conversations, selectedConversationId]
   );
 
-  function showActionFeedback(message: string) {
-    setFeedback(message);
-  }
-
   const loadConversations = useCallback(async () => {
+    if (!token || !isAuthenticated) {
+      setConversations([]);
+      setIsLoadingConversations(false);
+      return;
+    }
+
+    setIsLoadingConversations(true);
     try {
-      const response = await fetch("/api/chat/messages", { cache: "no-store" });
+      const response = await fetch("/api/chat/messages", {
+        cache: "no-store",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       if (!response.ok || !data.ok) {
         setFeedback(data.error || "Unable to load conversations.");
@@ -64,22 +79,39 @@ export default function MessagesPage() {
       }
     } catch {
       setFeedback("Unable to load conversations.");
+    } finally {
+      setIsLoadingConversations(false);
     }
-  }, [selectedConversationId]);
+  }, [token, isAuthenticated, selectedConversationId]);
 
-  const loadMessages = useCallback(async (conversationId: string) => {
-    try {
-      const response = await fetch(`/api/chat/messages?conversationId=${conversationId}`, { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok || !data.ok) {
-        setFeedback(data.error || "Unable to load messages.");
+  const loadMessages = useCallback(
+    async (conversationId: string) => {
+      if (!token) {
         return;
       }
-      setMessages(data.messages || []);
-    } catch {
-      setFeedback("Unable to load messages.");
-    }
-  }, []);
+
+      setIsLoadingMessages(true);
+      try {
+        const response = await fetch(`/api/chat/messages?conversationId=${conversationId}`, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          setFeedback(data.error || "Unable to load messages.");
+          return;
+        }
+        setMessages(data.messages || []);
+      } catch {
+        setFeedback("Unable to load messages.");
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [token]
+  );
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -98,13 +130,17 @@ export default function MessagesPage() {
   }, [messages]);
 
   async function sendMessage() {
-    if (!input.trim() || !selectedConversationId) return;
+    if (!input.trim() || !selectedConversationId || !token || isSending) return;
     setFeedback("");
+    setIsSending(true);
 
     try {
       const response = await fetch("/api/chat/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ conversationId: selectedConversationId, content: input }),
       });
       const data = await response.json();
@@ -127,11 +163,50 @@ export default function MessagesPage() {
       setInput("");
     } catch {
       setFeedback("Unable to send message.");
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  async function handleCreateConversation() {
+    if (!recipientEmail.trim() || !token || isCreatingChat) {
+      return;
+    }
+
+    setIsCreatingChat(true);
+    setFeedback("");
+    try {
+      const response = await fetch("/api/chat/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email: recipientEmail.trim().toLowerCase() }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok || !data.conversation) {
+        setFeedback(data.error || "Unable to start a conversation.");
+        return;
+      }
+
+      setConversations((current) => {
+        const withoutDuplicate = current.filter((conversation) => conversation.id !== data.conversation.id);
+        return [data.conversation, ...withoutDuplicate];
+      });
+      setSelectedConversationId(data.conversation.id);
+      setRecipientEmail("");
+      setShowCreateChat(false);
+      setFeedback("Conversation ready.");
+    } catch {
+      setFeedback("Unable to start a conversation.");
+    } finally {
+      setIsCreatingChat(false);
     }
   }
 
   const filteredConversations = conversations.filter((conversation) =>
-    `${conversation.name} ${conversation.lastMessage}`.toLowerCase().includes(search.trim().toLowerCase())
+    `${conversation.name} ${conversation.lastMessage} ${conversation.subtitle || ""}`.toLowerCase().includes(search.trim().toLowerCase())
   );
 
   if (!isAuthenticated) {
@@ -168,11 +243,31 @@ export default function MessagesPage() {
               type="button"
               aria-label="Start a new chat"
               title="Start a new chat"
-              onClick={() => showActionFeedback("New chat creation is coming next. Open any conversation to keep chatting right now.")}
+              onClick={() => setShowCreateChat((value) => !value)}
             >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+
+          {showCreateChat ? (
+            <div className="mb-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                Start direct chat
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="student@college.edu"
+                  value={recipientEmail}
+                  onChange={(event) => setRecipientEmail(event.target.value)}
+                  className="input-clean"
+                />
+                <Button type="button" onClick={handleCreateConversation} disabled={isCreatingChat}>
+                  {isCreatingChat ? "..." : "Start"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
             <Input
@@ -185,7 +280,9 @@ export default function MessagesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length ? (
+          {isLoadingConversations ? (
+            <div className="px-4 py-8 text-sm text-[var(--text-secondary)]">Loading conversations...</div>
+          ) : filteredConversations.length ? (
             filteredConversations.map((conversation) => (
               <button
                 key={conversation.id}
@@ -203,6 +300,7 @@ export default function MessagesPage() {
                       {formatDistanceToNow(new Date(conversation.time), { addSuffix: true })}
                     </span>
                   </div>
+                  <p className="truncate text-xs text-[var(--text-muted)]">{conversation.subtitle}</p>
                   <p className="truncate text-sm text-[var(--text-secondary)]">{conversation.lastMessage}</p>
                 </div>
                 {conversation.unread > 0 ? (
@@ -214,7 +312,7 @@ export default function MessagesPage() {
             ))
           ) : (
             <div className="px-4 py-8 text-sm text-[var(--text-secondary)]">
-              No conversations match your search yet. Try a different name or open one of your campus chats.
+              No conversations match your search yet. Start a direct chat or open one of your campus groups.
             </div>
           )}
         </div>
@@ -229,41 +327,9 @@ export default function MessagesPage() {
                 <div>
                   <h2 className="text-body font-medium text-[var(--text-primary)]">{selectedConversation.name}</h2>
                   <p className="text-caption text-[var(--text-muted)]">
-                    {selectedConversation.isGroup ? "Group conversation" : "Direct conversation"}
+                    {selectedConversation.subtitle || (selectedConversation.isGroup ? "Group conversation" : "Direct conversation")}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  aria-label="Voice call"
-                  title="Voice call"
-                  onClick={() => showActionFeedback("Voice calling is not live yet. Keep using chat for now.")}
-                >
-                  <Phone className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  aria-label="Video call"
-                  title="Video call"
-                  onClick={() => showActionFeedback("Video calling is not live yet. Keep using chat for now.")}
-                >
-                  <Video className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  type="button"
-                  aria-label="Conversation options"
-                  title="Conversation options"
-                  onClick={() => showActionFeedback("More conversation controls are coming soon.")}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
               </div>
             </div>
 
@@ -274,28 +340,38 @@ export default function MessagesPage() {
             ) : null}
 
             <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                        message.isOwn
-                          ? "bg-[var(--accent)]/15 text-[var(--accent)]"
-                          : "bg-white text-[var(--text-primary)]"
-                      }`}
-                    >
-                      {!message.isOwn ? (
-                        <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">{message.senderName}</p>
-                      ) : null}
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      <p className={`mt-2 text-caption ${message.isOwn ? "text-[var(--accent)]" : "text-[var(--text-secondary)]"}`}>
-                        {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
-                      </p>
+              {isLoadingMessages ? (
+                <div className="text-sm text-[var(--text-secondary)]">Loading messages...</div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.length ? (
+                    messages.map((message) => (
+                      <div key={message.id} className={`flex ${message.isOwn ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+                            message.isOwn
+                              ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                              : "bg-white text-[var(--text-primary)]"
+                          }`}
+                        >
+                          {!message.isOwn ? (
+                            <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">{message.senderName}</p>
+                          ) : null}
+                          <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+                          <p className={`mt-2 text-caption ${message.isOwn ? "text-[var(--accent)]" : "text-[var(--text-secondary)]"}`}>
+                            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-white px-4 py-8 text-sm text-[var(--text-secondary)]">
+                      No messages yet. Send the first one to start this conversation.
                     </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
             </div>
 
             <div className="border-t border-[var(--border-color)] bg-white p-4">
@@ -311,8 +387,9 @@ export default function MessagesPage() {
                   onChange={(event) => setInput(event.target.value)}
                   placeholder="Type a message..."
                   className="flex-1 input-clean"
+                  maxLength={1000}
                 />
-                <Button type="submit" size="icon" variant="outline">
+                <Button type="submit" size="icon" variant="outline" disabled={!input.trim() || isSending}>
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
