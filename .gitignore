@@ -36,3 +36,4 @@ flutter_app/.flutter-plugins-dependencies
 server.log
 server.out
 server.pid
+.vercel
