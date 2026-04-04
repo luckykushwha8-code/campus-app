@@ -46,6 +46,10 @@ export default function MessagesPage() {
     [conversations, selectedConversationId]
   );
 
+  function showActionFeedback(message: string) {
+    setFeedback(message);
+  }
+
   const loadConversations = useCallback(async () => {
     try {
       const response = await fetch("/api/chat/messages", { cache: "no-store" });
@@ -158,7 +162,14 @@ export default function MessagesPage() {
         <div className="border-b border-[var(--border-color)] p-4">
           <div className="mb-3 flex items-center justify-between">
             <h1 className="text-title font-semibold text-[var(--text-primary)]">Messages</h1>
-            <Button size="sm" variant="outline" type="button">
+            <Button
+              size="sm"
+              variant="outline"
+              type="button"
+              aria-label="Start a new chat"
+              title="Start a new chat"
+              onClick={() => showActionFeedback("New chat creation is coming next. Open any conversation to keep chatting right now.")}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -174,32 +185,38 @@ export default function MessagesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.map((conversation) => (
-            <button
-              key={conversation.id}
-              className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-[var(--bg-secondary)] ${
-                selectedConversationId === conversation.id ? "bg-[var(--bg-secondary)]" : ""
-              }`}
-              onClick={() => setSelectedConversationId(conversation.id)}
-              type="button"
-            >
-              <Avatar alt={conversation.name} src={conversation.avatar} className="h-10 w-10" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="truncate text-body font-medium text-[var(--text-primary)]">{conversation.name}</span>
-                  <span className="text-caption text-[var(--text-muted)]">
-                    {formatDistanceToNow(new Date(conversation.time), { addSuffix: true })}
-                  </span>
+          {filteredConversations.length ? (
+            filteredConversations.map((conversation) => (
+              <button
+                key={conversation.id}
+                className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-[var(--bg-secondary)] ${
+                  selectedConversationId === conversation.id ? "bg-[var(--bg-secondary)]" : ""
+                }`}
+                onClick={() => setSelectedConversationId(conversation.id)}
+                type="button"
+              >
+                <Avatar alt={conversation.name} src={conversation.avatar} className="h-10 w-10" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="truncate text-body font-medium text-[var(--text-primary)]">{conversation.name}</span>
+                    <span className="text-caption text-[var(--text-muted)]">
+                      {formatDistanceToNow(new Date(conversation.time), { addSuffix: true })}
+                    </span>
+                  </div>
+                  <p className="truncate text-sm text-[var(--text-secondary)]">{conversation.lastMessage}</p>
                 </div>
-                <p className="truncate text-sm text-[var(--text-secondary)]">{conversation.lastMessage}</p>
-              </div>
-              {conversation.unread > 0 ? (
-                <Badge variant="secondary" className="text-xs">
-                  {conversation.unread}
-                </Badge>
-              ) : null}
-            </button>
-          ))}
+                {conversation.unread > 0 ? (
+                  <Badge variant="secondary" className="text-xs">
+                    {conversation.unread}
+                  </Badge>
+                ) : null}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-8 text-sm text-[var(--text-secondary)]">
+              No conversations match your search yet. Try a different name or open one of your campus chats.
+            </div>
+          )}
         </div>
       </div>
 
@@ -217,13 +234,34 @@ export default function MessagesPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" type="button">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  aria-label="Voice call"
+                  title="Voice call"
+                  onClick={() => showActionFeedback("Voice calling is not live yet. Keep using chat for now.")}
+                >
                   <Phone className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" type="button">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  aria-label="Video call"
+                  title="Video call"
+                  onClick={() => showActionFeedback("Video calling is not live yet. Keep using chat for now.")}
+                >
                   <Video className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" type="button">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  type="button"
+                  aria-label="Conversation options"
+                  title="Conversation options"
+                  onClick={() => showActionFeedback("More conversation controls are coming soon.")}
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </div>

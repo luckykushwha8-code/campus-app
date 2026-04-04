@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
@@ -18,15 +18,8 @@ const mobileNavItems = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
-  const { user, logout } = useAppSession();
-
-  function handleLogout() {
-    logout();
-    router.push("/login");
-    router.refresh();
-  }
+  const { user } = useAppSession();
 
   return (
     <>
@@ -109,9 +102,6 @@ export function Navbar() {
             <div className="mt-4 flex gap-3">
               <button className="button-outline flex-1" onClick={() => setShowCreate(false)} type="button">
                 Close
-              </button>
-              <button className="button-ghost" onClick={handleLogout} type="button">
-                Logout
               </button>
             </div>
           </div>

@@ -8,6 +8,7 @@ export interface IUser extends Document {
   collegeId?: string;
   collegeName?: string;
   avatarUrl?: string;
+  coverUrl?: string;
   role: "student" | "admin";
   verified?: boolean;
   followers: string[];
@@ -25,6 +26,7 @@ const UserSchema = new Schema<IUser>({
   collegeId: { type: String, index: true },
   collegeName: { type: String },
   avatarUrl: { type: String },
+  coverUrl: { type: String },
   role: { type: String, enum: ["student", "admin"], default: "student" },
   verified: { type: Boolean, default: false },
   followers: { type: [String], default: [] },

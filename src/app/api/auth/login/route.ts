@@ -37,6 +37,7 @@ export async function POST(req: Request) {
         collegeName: user.collegeName || '',
         collegeId: user.collegeId || '',
         avatarUrl: user.avatarUrl || '',
+        coverUrl: user.coverUrl || '',
         verified: Boolean(user.verified),
       },
     }), { status: 200 });

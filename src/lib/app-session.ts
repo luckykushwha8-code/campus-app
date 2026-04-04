@@ -7,6 +7,7 @@ export interface AppUser {
   collegeName?: string;
   collegeId?: string;
   avatarUrl?: string;
+  coverUrl?: string;
   verified?: boolean;
 }
 
@@ -65,6 +66,7 @@ export function normalizeUser(user: Partial<AppUser> & { id: string; email: stri
     collegeName: user.collegeName || "",
     collegeId: user.collegeId || "",
     avatarUrl: user.avatarUrl || "",
+    coverUrl: user.coverUrl || "",
     verified: Boolean(user.verified),
   } satisfies AppUser;
 }
@@ -107,9 +109,20 @@ export function clearStoredSession() {
 export function updateStoredUser(updates: Partial<AppUser>) {
   const current = getStoredSession();
   if (!current) return;
+  const nextUser = normalizeUser({ ...current.user, ...updates });
+  const accounts = getStorageItem<LocalAuthAccount[]>(LOCAL_ACCOUNTS_KEY, []);
+  const nextAccounts = accounts.map((account) =>
+    account.email === current.user.email
+      ? {
+          ...account,
+          user: normalizeUser({ ...account.user, ...updates }),
+        }
+      : account
+  );
+  setStorageItem(LOCAL_ACCOUNTS_KEY, nextAccounts);
   setStoredSession({
     ...current,
-    user: normalizeUser({ ...current.user, ...updates }),
+    user: nextUser,
   });
 }
 

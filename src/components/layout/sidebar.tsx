@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, Compass, MessageSquare, Users, BookOpen, Calendar, Briefcase, ShoppingBag, GraduationCap, Hash, Flame } from "lucide-react";
+import { Home, MessageSquare, Users, BookOpen, Calendar, Briefcase, ShoppingBag, GraduationCap, Flame } from "lucide-react";
 
 const quickLinks = [
   { href: "/", icon: Home, label: "Feed" },
-  { href: "/explore", icon: Compass, label: "Discover" },
   { href: "/messages", icon: MessageSquare, label: "Messages" },
   { href: "/rooms", icon: Users, label: "Rooms" },
 ];
@@ -85,18 +84,6 @@ export function Sidebar() {
               <Link key={topic.name} href={`/explore?hashtag=${topic.name}`} className="app-panel flex items-center justify-between px-3 py-3 text-sm hover:bg-[var(--bg-tertiary)]">
                 <span className="font-medium text-[var(--text-primary)]">{topic.name}</span>
                 <span className="text-xs text-[var(--text-muted)]">{topic.posts}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="app-surface p-4">
-          <h3 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Rooms to join</h3>
-          <div className="space-y-2">
-            {["CSE 2025", "Hostel A", "Tech Club"].map((room) => (
-              <Link key={room} href="/rooms" className="app-panel flex items-center gap-3 px-3 py-3 text-sm hover:bg-[var(--bg-tertiary)]">
-                <Hash className="h-4 w-4 text-[var(--text-muted)]" />
-                <span className="text-[var(--text-primary)]">{room}</span>
               </Link>
             ))}
           </div>

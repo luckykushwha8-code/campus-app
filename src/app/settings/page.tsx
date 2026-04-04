@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const storageKey = user ? `campuslink_settings_${user.id}` : "campuslink_settings_guest";
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [savedMessage, setSavedMessage] = useState("");
+  const actionButtonClass =
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0";
 
   useEffect(() => {
     setSettings(getStorageItem(storageKey, defaultSettings));
@@ -80,21 +82,36 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] px-4 py-8">
-      <div className="mx-auto max-w-5xl rounded-[28px] border border-[var(--border-color)] bg-white p-6 shadow-[0_18px_60px_rgba(17,24,39,0.07)]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-[var(--accent)]">Settings</p>
-            <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Control your campus presence</h1>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Manage your account, privacy, notifications, and session for {user.name}.
-            </p>
+      <div className="mx-auto max-w-5xl rounded-[32px] border border-[var(--border-color)] bg-white p-5 shadow-[0_18px_60px_rgba(17,24,39,0.07)] sm:p-6 lg:p-8">
+        <div className="rounded-[28px] bg-[linear-gradient(135deg,rgba(37,99,235,0.10)_0%,rgba(15,23,42,0.03)_52%,rgba(14,165,233,0.10)_100%)] px-5 py-6 sm:px-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-sm font-medium text-[var(--accent)]">Settings</p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-[var(--text-primary)] sm:text-4xl">Control your campus presence</h1>
+              <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+                Manage your account, privacy, notifications, and session for {user.name}.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
+              <Link
+                href="/profile"
+                className={`${actionButtonClass} border-[var(--border-light)] bg-white text-[var(--accent)] shadow-[0_10px_24px_rgba(15,23,42,0.06)] hover:bg-[var(--bg-secondary)]`}
+              >
+                Back to profile
+              </Link>
+              <button
+                className={`${actionButtonClass} border-transparent bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:bg-white hover:text-[var(--text-primary)]`}
+                onClick={handleLogout}
+                type="button"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            </div>
           </div>
-          <Link href="/profile" className="button-outline">
-            Back to profile
-          </Link>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
           <div className="space-y-4">
             <SettingsCard
               icon={Bell}
@@ -154,7 +171,7 @@ export default function SettingsPage() {
               ]}
             />
 
-            <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5">
+            <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-white p-3 text-[var(--accent)]">
                   <KeyRound className="h-5 w-5" />
@@ -175,13 +192,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Link href="/profile" className="button-outline">
-                  Edit profile
-                </Link>
-                <button className="button-ghost flex items-center gap-2" onClick={handleLogout} type="button">
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </button>
+                <p className="rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
+                  You are signed in on this device and your session is active.
+                </p>
               </div>
             </div>
           </div>
@@ -190,7 +203,7 @@ export default function SettingsPage() {
             <SummaryCard icon={UserRound} title="Account" value={user.name} hint="Profile name" />
             <SummaryCard icon={Eye} title="Visibility" value={privacyMode} hint="Current privacy mode" />
             <SummaryCard icon={Globe} title="Campus" value={user.collegeName || "Not set"} hint="Current campus" />
-            <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5">
+            <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-white p-3 text-[var(--accent)]">
                   <Smartphone className="h-5 w-5" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
@@ -8,18 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppSession } from "@/hooks/use-app-session";
 import { buildUsername, normalizeUser } from "@/lib/app-session";
-import {
-  MapPin,
-  GraduationCap,
-  BadgeCheck,
-  Settings,
-  Edit3,
-  LogOut,
-  CalendarDays,
-  Image as ImageIcon,
-  Heart,
-  Sparkles,
-} from "lucide-react";
+import { MapPin, GraduationCap, BadgeCheck, Settings, Edit3, CalendarDays, Image as ImageIcon, Heart, Sparkles, LogOut } from "lucide-react";
 
 type ProfileForm = {
   name: string;
@@ -27,6 +16,7 @@ type ProfileForm = {
   collegeName: string;
   collegeId: string;
   avatarUrl: string;
+  coverUrl: string;
 };
 
 type FeedPost = {
@@ -41,19 +31,22 @@ type FeedPost = {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout, updateUser } = useAppSession();
+  const { user, isAuthenticated, updateUser, logout } = useAppSession();
   const [form, setForm] = useState<ProfileForm>({
     name: "",
     bio: "",
     collegeName: "",
     collegeId: "",
     avatarUrl: "",
+    coverUrl: "",
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -63,6 +56,7 @@ export default function ProfilePage() {
         collegeName: user.collegeName || "",
         collegeId: user.collegeId || "",
         avatarUrl: user.avatarUrl || "",
+        coverUrl: user.coverUrl || "",
       });
     }
   }, [user]);
@@ -87,6 +81,8 @@ export default function ProfilePage() {
 
   const mediaPosts = useMemo(() => posts.filter((post) => (post.images?.length || 0) > 0), [posts]);
   const totalLikes = useMemo(() => posts.reduce((sum, post) => sum + (post.likesCount || 0), 0), [posts]);
+  const actionButtonClass =
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0";
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -98,6 +94,7 @@ export default function ProfilePage() {
       collegeName: form.collegeName.trim(),
       collegeId: form.collegeId.trim(),
       avatarUrl: form.avatarUrl.trim(),
+      coverUrl: form.coverUrl.trim(),
       username: buildUsername(user.email, form.name.trim()),
     };
 
@@ -138,6 +135,76 @@ export default function ProfilePage() {
     router.refresh();
   }
 
+  async function persistProfileMedia(updates: Partial<ProfileForm>, successMessage: string) {
+    if (!user) return;
+
+    const nextUser = {
+      ...user,
+      ...updates,
+      username: buildUsername(user.email, form.name.trim() || user.name),
+    };
+
+    updateUser(nextUser);
+    setForm((current) => ({ ...current, ...updates }));
+    setStatusMessage("Saving image...");
+
+    try {
+      const response = await fetch("/api/user/update", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          updates: nextUser,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        setStatusMessage(data.error || "Unable to upload image right now.");
+        return;
+      }
+
+      updateUser(normalizeUser({ ...nextUser, ...data.user }));
+      setStatusMessage(successMessage);
+    } catch {
+      setStatusMessage(`${successMessage} Saved on this device and will sync when the server is ready.`);
+    }
+  }
+
+  function readImageFile(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Unable to read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleImageSelection(event: ChangeEvent<HTMLInputElement>, target: "avatarUrl" | "coverUrl") {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setStatusMessage("Please choose an image file.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setStatusMessage("Please choose an image smaller than 2MB.");
+      return;
+    }
+
+    try {
+      const imageData = await readImageFile(file);
+      await persistProfileMedia(
+        { [target]: imageData } as Partial<ProfileForm>,
+        target === "avatarUrl" ? "Profile photo updated." : "Cover photo updated."
+      );
+    } catch {
+      setStatusMessage("Unable to upload image right now.");
+    }
+  }
+
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] px-4 py-12">
@@ -164,39 +231,82 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <div className="mx-auto max-w-5xl px-4 py-8">
         <div className="overflow-hidden rounded-[32px] border border-[var(--border-color)] bg-white shadow-[0_18px_60px_rgba(17,24,39,0.07)]">
-          <div className="h-44 bg-[linear-gradient(135deg,#1d4ed8_0%,#0f172a_45%,#0ea5e9_100%)]" />
+          <div
+            className="relative min-h-[188px] rounded-b-[28px] bg-[linear-gradient(135deg,#1d4ed8_0%,#0f172a_45%,#0ea5e9_100%)] bg-cover bg-center"
+            style={form.coverUrl ? { backgroundImage: `linear-gradient(135deg, rgba(29,78,216,0.22) 0%, rgba(15,23,42,0.38) 50%, rgba(14,165,233,0.18) 100%), url(${form.coverUrl})` } : undefined}
+          >
+            <div className="absolute inset-x-0 bottom-0 flex justify-end p-4 sm:p-5">
+              <button
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--text-primary)] shadow-[0_10px_24px_rgba(15,23,42,0.14)] backdrop-blur transition hover:bg-white"
+                onClick={() => coverInputRef.current?.click()}
+                type="button"
+                aria-label="Edit cover photo"
+                title="Edit cover photo"
+              >
+                <ImageIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
 
-          <div className="px-6 pb-6">
-            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-              <div className="-mt-12 flex items-end gap-4">
-                <Avatar alt={user.name} src={user.avatarUrl} className="h-28 w-28 border-4 border-white shadow-lg" />
-                <div className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-semibold text-[var(--text-primary)]">{user.name}</h1>
+          <div className="relative px-5 pb-6 pt-0 sm:px-6 sm:pb-8">
+            <div className="relative z-10 -mt-12 flex flex-col gap-6 sm:-mt-14 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
+                <div className="relative w-fit">
+                  <Avatar
+                    alt={user.name}
+                    src={form.avatarUrl}
+                    className="h-24 w-24 rounded-full border-4 border-white bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] sm:h-28 sm:w-28"
+                  />
+                  <button
+                    className="absolute bottom-0 right-0 inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[var(--text-primary)] text-white shadow-[0_8px_20px_rgba(15,23,42,0.22)] transition hover:bg-[var(--accent)]"
+                    onClick={() => avatarInputRef.current?.click()}
+                    type="button"
+                    aria-label="Edit profile photo"
+                    title="Edit profile photo"
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="min-w-0 space-y-1 pt-2 sm:pb-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-3xl font-bold tracking-[-0.02em] text-[var(--text-primary)] sm:text-4xl">{user.name}</h1>
                     {user.verified ? <BadgeCheck className="h-5 w-5 text-[var(--accent)]" /> : null}
                   </div>
-                  <p className="mt-1 text-sm text-[var(--text-muted)]">@{user.username}</p>
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">{user.email}</p>
+                  <p className="text-base font-medium text-[var(--text-muted)]">@{user.username}</p>
+                  <p className="text-sm text-[var(--text-secondary)]">{user.email}</p>
+                  <p className="pt-1 text-xs text-[var(--text-muted)]">Avatar: 512 x 512 px recommended. Cover: 1500 x 500 px recommended.</p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <button className="button-outline flex items-center gap-2" onClick={() => setIsEditing((value) => !value)} type="button">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end lg:pt-3">
+                <button
+                  className={`${actionButtonClass} border-[var(--border-light)] bg-white text-[var(--accent)] shadow-[0_10px_24px_rgba(15,23,42,0.06)] hover:bg-[var(--bg-secondary)]`}
+                  onClick={() => setIsEditing((value) => !value)}
+                  type="button"
+                >
                   <Edit3 className="h-4 w-4" />
                   {isEditing ? "Close Edit" : "Edit Profile"}
                 </button>
-                <button className="button-ghost flex items-center gap-2" onClick={() => router.push("/settings")} type="button">
+                <button
+                  className={`${actionButtonClass} border-transparent bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:bg-white hover:text-[var(--text-primary)]`}
+                  onClick={() => router.push("/settings")}
+                  type="button"
+                >
                   <Settings className="h-4 w-4" />
                   Settings
                 </button>
-                <button className="button-ghost flex items-center gap-2" onClick={handleLogout} type="button">
+                <button
+                  className={`${actionButtonClass} border-transparent bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:bg-white hover:text-[var(--text-primary)]`}
+                  onClick={handleLogout}
+                  type="button"
+                >
                   <LogOut className="h-4 w-4" />
                   Logout
                 </button>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-[2fr_1fr]">
+            <div className="mt-8 grid gap-6 md:grid-cols-[2fr_1fr]">
               <div>
                 <p className="text-base leading-7 text-[var(--text-secondary)]">
                   {user.bio || "Add a short intro so your classmates know what you build, study, or care about."}
@@ -217,7 +327,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3 self-start">
                 <ProfileStat label="Posts" value={posts.length} />
                 <ProfileStat label="Media" value={mediaPosts.length} />
                 <ProfileStat label="Likes" value={totalLikes} />
@@ -231,7 +341,7 @@ export default function ProfilePage() {
             ) : null}
 
             {isEditing ? (
-              <form className="mt-6 grid gap-4 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5" onSubmit={handleSave}>
+              <form className="mt-6 grid gap-4 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]" onSubmit={handleSave}>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Name</label>
@@ -242,10 +352,14 @@ export default function ProfilePage() {
                     <Input value={form.avatarUrl} onChange={(event) => setForm((current) => ({ ...current, avatarUrl: event.target.value }))} placeholder="https://..." />
                   </div>
                   <div>
+                    <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Cover URL</label>
+                    <Input value={form.coverUrl} onChange={(event) => setForm((current) => ({ ...current, coverUrl: event.target.value }))} placeholder="https://..." />
+                  </div>
+                  <div>
                     <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">College</label>
                     <Input value={form.collegeName} onChange={(event) => setForm((current) => ({ ...current, collegeName: event.target.value }))} />
                   </div>
-                  <div>
+                  <div className="sm:col-start-2">
                     <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">College ID</label>
                     <Input value={form.collegeId} onChange={(event) => setForm((current) => ({ ...current, collegeId: event.target.value }))} />
                   </div>
@@ -312,6 +426,8 @@ export default function ProfilePage() {
               </Tabs>
             </div>
           </div>
+          <input ref={avatarInputRef} accept="image/*" className="hidden" type="file" onChange={(event) => handleImageSelection(event, "avatarUrl")} />
+          <input ref={coverInputRef} accept="image/*" className="hidden" type="file" onChange={(event) => handleImageSelection(event, "coverUrl")} />
         </div>
       </div>
     </div>
