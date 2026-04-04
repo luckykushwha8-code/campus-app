@@ -41,10 +41,15 @@ export default function NotesPage() {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [feedback, setFeedback] = useState("");
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const editingNote = useMemo(() => notes.find((note) => note.id === editingNoteId) || null, [notes, editingNoteId]);
 
   useEffect(() => {
     async function loadNotes() {
@@ -154,6 +159,102 @@ export default function NotesPage() {
     }
   }
 
+  async function handleSaveEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editingNoteId || !token) {
+      setFeedback("Please log in to update notes.");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setFeedback("");
+
+    try {
+      const response = await fetch(`/api/notes/${editingNoteId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          subject: subject.trim(),
+          description: description.trim(),
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok || !data.note) {
+        setFeedback(data.error || "Unable to update note right now.");
+        return;
+      }
+
+      setNotes((current) => current.map((note) => (note.id === editingNoteId ? data.note : note)));
+      setEditingNoteId(null);
+      setShowUpload(false);
+      setTitle("");
+      setSubject("");
+      setDescription("");
+      setFeedback("Note updated successfully.");
+    } catch {
+      setFeedback("Unable to update note right now.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    if (!token) {
+      setFeedback("Please log in to delete notes.");
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this note?");
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingId(noteId);
+    setFeedback("");
+
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        setFeedback(data.error || "Unable to delete note right now.");
+        return;
+      }
+
+      setNotes((current) => current.filter((note) => note.id !== noteId));
+      if (editingNoteId === noteId) {
+        setEditingNoteId(null);
+        setShowUpload(false);
+      }
+      setFeedback("Note deleted successfully.");
+    } catch {
+      setFeedback("Unable to delete note right now.");
+    } finally {
+      setIsDeletingId(null);
+    }
+  }
+
+  function startEdit(note: NoteItem) {
+    setEditingNoteId(note.id);
+    setShowUpload(true);
+    setTitle(note.title);
+    setSubject(note.subject);
+    setDescription(note.description || "");
+    setSelectedFile(null);
+    setFeedback("");
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] py-8">
       <div className="mx-auto max-w-screen-lg px-4">
@@ -162,14 +263,28 @@ export default function NotesPage() {
             <h1 className="mb-2 text-title font-semibold text-[var(--text-primary)]">Class Notes</h1>
             <p className="text-caption text-[var(--text-muted)]">Upload, browse, and share real PDF notes with your campus community.</p>
           </div>
-          <Button className="button-outline gap-2" onClick={() => setShowUpload((value) => !value)} type="button">
+          <Button
+            className="button-outline gap-2"
+            onClick={() => {
+              const nextOpen = !showUpload;
+              setShowUpload(nextOpen);
+              if (!nextOpen) {
+                setEditingNoteId(null);
+                setTitle("");
+                setSubject("");
+                setDescription("");
+                setSelectedFile(null);
+              }
+            }}
+            type="button"
+          >
             <Upload className="h-4 w-4" />
-            {showUpload ? "Close Upload" : "Upload Note"}
+            {showUpload ? (editingNoteId ? "Close Editor" : "Close Upload") : "Upload Note"}
           </Button>
         </div>
 
         {showUpload ? (
-          <form className="mb-6 grid gap-4 rounded-3xl border border-[var(--border-color)] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]" onSubmit={handleUpload}>
+          <form className="mb-6 grid gap-4 rounded-3xl border border-[var(--border-color)] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.05)]" onSubmit={editingNoteId ? handleSaveEdit : handleUpload}>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-2 block text-sm font-medium text-[var(--text-primary)]">Title</label>
@@ -191,24 +306,41 @@ export default function NotesPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
-              <label className="block text-sm font-medium text-[var(--text-primary)]">PDF file</label>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">Upload one PDF up to 5MB.</p>
-              <input
-                className="mt-3 block w-full text-sm text-[var(--text-secondary)]"
-                type="file"
-                accept="application/pdf"
-                onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
-                required
-              />
-              {selectedFile ? <p className="mt-2 text-sm text-[var(--text-primary)]">{selectedFile.name}</p> : null}
-            </div>
+            {!editingNoteId ? (
+              <div className="rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
+                <label className="block text-sm font-medium text-[var(--text-primary)]">PDF file</label>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">Upload one PDF up to 5MB.</p>
+                <input
+                  className="mt-3 block w-full text-sm text-[var(--text-secondary)]"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+                  required
+                />
+                {selectedFile ? <p className="mt-2 text-sm text-[var(--text-primary)]">{selectedFile.name}</p> : null}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-secondary)]">
+                Editing metadata only. Existing PDF file stays attached to this note.
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button className="button-clean" disabled={isUploading} type="submit">
-                {isUploading ? "Uploading..." : "Upload note"}
+                {editingNoteId ? (isSavingEdit ? "Saving..." : "Save changes") : isUploading ? "Uploading..." : "Upload note"}
               </button>
-              <button className="button-outline" onClick={() => setShowUpload(false)} type="button">
+              <button
+                className="button-outline"
+                onClick={() => {
+                  setShowUpload(false);
+                  setEditingNoteId(null);
+                  setTitle("");
+                  setSubject("");
+                  setDescription("");
+                  setSelectedFile(null);
+                }}
+                type="button"
+              >
                 Cancel
               </button>
             </div>
@@ -264,7 +396,13 @@ export default function NotesPage() {
           ) : notes.length ? (
             <div className="grid gap-4 md:grid-cols-2">
               {notes.map((note) => (
-                <NoteCard key={note.id} note={note} />
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onEdit={note.isOwner ? () => startEdit(note) : undefined}
+                  onDelete={note.isOwner ? () => handleDeleteNote(note.id) : undefined}
+                  isDeleting={isDeletingId === note.id}
+                />
               ))}
             </div>
           ) : (

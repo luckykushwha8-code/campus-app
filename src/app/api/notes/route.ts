@@ -1,6 +1,7 @@
 import type { SortOrder } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { verifyToken } from "@/lib/auth";
+import { getRequestUserId } from "@/lib/request-auth";
 import { getBearerToken, getServerSession } from "@/lib/server-auth";
 import { uploadDocumentToCloudinary, isMediaStorageConfigured } from "@/lib/media-storage";
 import { NoteModel } from "@/models/Note";
@@ -34,7 +35,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search")?.trim() || "";
     const tab = searchParams.get("tab") || "all";
-    const userId = searchParams.get("userId") || "";
+    const queryUserId = searchParams.get("userId") || "";
+    const currentUserId = (await getRequestUserId(req)) || queryUserId;
 
     const query: Record<string, unknown> = {};
 
@@ -46,8 +48,8 @@ export async function GET(req: Request) {
       ];
     }
 
-    if (tab === "my" && userId) {
-      query.authorId = userId;
+    if (tab === "my" && currentUserId) {
+      query.authorId = currentUserId;
     }
 
     const sort: Record<string, SortOrder> =
@@ -62,7 +64,7 @@ export async function GET(req: Request) {
         ok: true,
         notes: notes.map((note) => ({
           ...serializeNote(note),
-          isOwner: userId ? note.authorId === userId : false,
+          isOwner: currentUserId ? note.authorId === currentUserId : false,
         })),
       }),
       { status: 200 }

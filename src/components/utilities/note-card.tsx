@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { FileText, Download, Eye } from "lucide-react";
+import { FileText, Download, Eye, Pencil, Trash2 } from "lucide-react";
 
 interface NoteCardProps {
   note: {
@@ -17,10 +17,14 @@ interface NoteCardProps {
     downloads: number;
     views: number;
     createdAt: string;
+    isOwner?: boolean;
   };
+  onEdit?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
-export function NoteCard({ note }: NoteCardProps) {
+export function NoteCard({ note, onEdit, onDelete, isDeleting }: NoteCardProps) {
   const fileSizeInMb = note.fileSize ? `${(note.fileSize / (1024 * 1024)).toFixed(1)} MB` : "PDF";
 
   return (
@@ -64,6 +68,27 @@ export function NoteCard({ note }: NoteCardProps) {
           {note.downloads}
         </Link>
       </div>
+      {note.isOwner ? (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50"
+            onClick={onEdit}
+            type="button"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit
+          </button>
+          <button
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+            onClick={onDelete}
+            disabled={isDeleting}
+            type="button"
+          >
+            <Trash2 className="h-3 w-3" />
+            {isDeleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
