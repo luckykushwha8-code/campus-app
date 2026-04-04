@@ -17,6 +17,7 @@ export interface AppSession {
 
 const SESSION_KEY = "campuslink_session";
 const SESSION_EVENT = "campuslink:session";
+export const SESSION_COOKIE = "campuslink_token";
 
 function canUseStorage() {
   return typeof window !== "undefined";
@@ -26,6 +27,17 @@ function emitSessionChange() {
   if (canUseStorage()) {
     window.dispatchEvent(new Event(SESSION_EVENT));
   }
+}
+
+function syncSessionCookie(token?: string | null) {
+  if (!canUseStorage()) return;
+
+  if (!token) {
+    document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+    return;
+  }
+
+  document.cookie = `${SESSION_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 }
 
 export function buildUsername(email: string, fallbackName?: string) {
@@ -74,12 +86,14 @@ export function setStoredSession(session: AppSession) {
     user: normalizeUser(session.user),
   };
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(normalized));
+  syncSessionCookie(session.token);
   emitSessionChange();
 }
 
 export function clearStoredSession() {
   if (!canUseStorage()) return;
   window.localStorage.removeItem(SESSION_KEY);
+  syncSessionCookie(null);
   emitSessionChange();
 }
 
