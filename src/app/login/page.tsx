@@ -15,12 +15,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function getNextPath() {
-    if (typeof window === "undefined") return "/";
-    const nextPath = new URLSearchParams(window.location.search).get("next");
-    return nextPath && nextPath.startsWith("/") ? nextPath : "/";
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
@@ -46,7 +40,7 @@ export default function LoginPage() {
         token: data.token,
         user: normalizeUser(data.user),
       });
-      router.push(getNextPath());
+      router.push("/");
       router.refresh();
     } catch {
       setError("Unable to reach the server. Please try again.");
