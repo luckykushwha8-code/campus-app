@@ -23,6 +23,7 @@ function serializePost(post: any, author: any, currentUserId?: string | null) {
     commentsCount: Number(post.commentsCount || 0),
     isLiked: currentUserId ? (post.likes || []).includes(currentUserId) : false,
     isOwner: currentUserId ? String(post.authorId) === currentUserId : false,
+    canReport: currentUserId ? String(post.authorId) !== currentUserId : false,
     isAnonymous: Boolean(post.isAnonymous),
     author: post.isAnonymous
       ? {
@@ -55,6 +56,7 @@ export async function GET(req: Request) {
     const currentUserId = await getRequestUserId(req);
 
     const query: Record<string, unknown> = {};
+    query.moderationStatus = { $ne: "reported" };
     if (authorId) {
       query.authorId = authorId;
     }

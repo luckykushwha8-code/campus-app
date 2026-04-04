@@ -13,6 +13,8 @@ export interface IPost extends Document {
   audience?: "campus" | "class" | "public";
   campusId?: string;
   campusName?: string;
+  moderationStatus?: "active" | "reported" | "removed";
+  reportCount?: number;
 }
 
 const PostSchema = new Schema<IPost>({
@@ -26,6 +28,8 @@ const PostSchema = new Schema<IPost>({
   audience: { type: String, enum: ["campus", "class", "public"], default: "campus" },
   campusId: { type: String },
   campusName: { type: String },
+  moderationStatus: { type: String, enum: ["active", "reported", "removed"], default: "active", index: true },
+  reportCount: { type: Number, default: 0 },
 }, { timestamps: true });
 
 export const PostModel = models.Post || model<IPost>("Post", PostSchema);

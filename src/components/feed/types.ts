@@ -13,6 +13,7 @@ export type FeedComment = {
   content: string;
   createdAt: string;
   isOwner: boolean;
+  canReport?: boolean;
   author: {
     id: string;
     name: string;
@@ -31,5 +32,6 @@ export type FeedPost = {
   isLiked: boolean;
   isOwner?: boolean;
   isAnonymous?: boolean;
+  canReport?: boolean;
   createdAt: string;
 };

@@ -76,6 +76,8 @@ export async function POST(req: Request) {
       audience,
       campusId: user.collegeId || "",
       campusName: user.collegeName || "",
+      moderationStatus: "active",
+      reportCount: 0,
     });
 
     return new Response(JSON.stringify({ ok: true, post: serializePost(post.toObject(), user) }), { status: 201 });

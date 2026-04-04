@@ -22,6 +22,7 @@ function serializeComment(comment: any, author: any, currentUserId?: string | nu
     content: comment.content || "",
     createdAt: comment.createdAt,
     isOwner: currentUserId ? String(comment.authorId) === currentUserId : false,
+    canReport: currentUserId ? String(comment.authorId) !== currentUserId : false,
     author: {
       id: author ? String(author._id) : String(comment.authorId),
       name: author?.name || "Student",
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
     }
 
     const currentUserId = await getRequestUserId(req);
-    const comments = await CommentModel.find({ postId }).sort({ createdAt: 1 }).limit(100).lean();
+    const comments = await CommentModel.find({ postId, moderationStatus: { $ne: "reported" } }).sort({ createdAt: 1 }).limit(100).lean();
     const authorIds = Array.from(new Set(comments.map((comment) => String(comment.authorId))));
     const authors = authorIds.length ? await UserModel.find({ _id: { $in: authorIds } }).lean() : [];
     const authorMap = new Map(authors.map((author) => [String(author._id), author]));
@@ -92,6 +93,8 @@ export async function POST(req: Request) {
       postId: String(post._id),
       authorId: String(user._id),
       content,
+      moderationStatus: "active",
+      reportCount: 0,
     });
 
     post.commentsCount = Number(post.commentsCount || 0) + 1;

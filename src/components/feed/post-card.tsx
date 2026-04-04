@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { formatDate } from "@/lib/utils";
-import { Heart, MessageCircle, BadgeCheck, Trash2, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, BadgeCheck, Trash2, Loader2, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { useAppSession } from "@/hooks/use-app-session";
@@ -29,6 +29,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isReporting, setIsReporting] = useState(false);
 
   async function loadComments(force = false) {
     if ((commentsLoaded && !force) || commentsLoading) {
@@ -211,6 +212,39 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
     }
   }
 
+  async function handleReport(targetType: "post" | "comment", targetId: string) {
+    if (!token || isReporting) {
+      return;
+    }
+
+    const reason = window.prompt("Why are you reporting this content?", "Spam or abuse");
+    if (!reason?.trim()) {
+      return;
+    }
+
+    setIsReporting(true);
+    try {
+      const response = await fetch("/api/moderation/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          targetType,
+          targetId,
+          reason: reason.trim(),
+        }),
+      });
+      const data = await response.json();
+      setCommentStatus(data.ok ? "Report submitted. Thanks for helping keep CampusLink safe." : data.error || "Unable to submit the report.");
+    } catch {
+      setCommentStatus("Unable to submit the report.");
+    } finally {
+      setIsReporting(false);
+    }
+  }
+
   return (
     <article className="app-surface overflow-hidden">
       <div className="flex items-center justify-between px-4 py-4">
@@ -231,11 +265,18 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
           </div>
         </div>
 
-        {post.isOwner ? (
-          <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-red-600" onClick={handleDeletePost} type="button">
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-          </button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {!post.isOwner && post.canReport ? (
+            <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--accent)]" onClick={() => handleReport("post", post.id)} type="button">
+              {isReporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flag className="h-4 w-4" />}
+            </button>
+          ) : null}
+          {post.isOwner ? (
+            <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-red-600" onClick={handleDeletePost} type="button">
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="px-4 pb-4">
@@ -300,6 +341,10 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                       {comment.isOwner ? (
                         <button className="text-xs font-medium text-red-600" onClick={() => handleDeleteComment(comment.id)} type="button">
                           Delete
+                        </button>
+                      ) : comment.canReport ? (
+                        <button className="text-xs font-medium text-[var(--accent)]" onClick={() => handleReport("comment", comment.id)} type="button">
+                          Report
                         </button>
                       ) : null}
                     </div>
