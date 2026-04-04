@@ -2,18 +2,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AUTH_COOKIE } from "@/lib/server-auth";
 
-const protectedRoutes = ["/profile", "/settings", "/messages", "/notifications"];
+const publicRoutes = new Set(["/login", "/signup"]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isProtected = protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+  const token = request.cookies.get(AUTH_COOKIE)?.value;
+  const isPublicRoute = publicRoutes.has(pathname);
 
-  if (!isProtected) {
-    return NextResponse.next();
+  if (token && isPublicRoute) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  const token = request.cookies.get(AUTH_COOKIE)?.value;
-  if (token) {
+  if (token || isPublicRoute) {
     return NextResponse.next();
   }
 
@@ -21,5 +21,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/profile/:path*", "/settings/:path*", "/messages/:path*", "/notifications/:path*"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+  ],
 };
