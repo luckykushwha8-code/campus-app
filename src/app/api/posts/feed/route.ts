@@ -1,49 +1,8 @@
 import { connectDB } from "@/lib/db";
+import { serializeFeedPost } from "@/lib/post-serialization";
 import { getRequestUserId } from "@/lib/request-auth";
 import { PostModel } from "@/models/Post";
 import { UserModel } from "@/models/User";
-
-function buildUsername(name?: string, email?: string) {
-  const source = name?.trim() || email?.split("@")[0] || "student";
-  return (
-    source
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "student"
-  );
-}
-
-function serializePost(post: any, author: any, currentUserId?: string | null) {
-  return {
-    id: String(post._id),
-    content: post.content || "",
-    images: Array.isArray(post.images) ? post.images : [],
-    createdAt: post.createdAt,
-    likesCount: Number(post.likesCount || 0),
-    commentsCount: Number(post.commentsCount || 0),
-    isLiked: currentUserId ? (post.likes || []).includes(currentUserId) : false,
-    isOwner: currentUserId ? String(post.authorId) === currentUserId : false,
-    canReport: currentUserId ? String(post.authorId) !== currentUserId : false,
-    isAnonymous: Boolean(post.isAnonymous),
-    author: post.isAnonymous
-      ? {
-          id: "anonymous",
-          name: "Anonymous",
-          username: "anonymous",
-          avatarUrl: "",
-          institution: post.campusName || "",
-          isVerified: false,
-        }
-      : {
-          id: author ? String(author._id) : String(post.authorId),
-          name: author?.name || "Student",
-          username: buildUsername(author?.name, author?.email),
-          avatarUrl: author?.avatarUrl || "",
-          institution: author?.collegeName || post.campusName || "",
-          isVerified: Boolean(author?.verified),
-        },
-  };
-}
 
 export async function GET(req: Request) {
   try {
@@ -83,7 +42,7 @@ export async function GET(req: Request) {
     return new Response(
       JSON.stringify({
         ok: true,
-        posts: slicedPosts.map((post) => serializePost(post, authorMap.get(String(post.authorId)), currentUserId)),
+        posts: slicedPosts.map((post) => serializeFeedPost(post, authorMap.get(String(post.authorId)), currentUserId)),
         nextCursor: hasMore ? String(slicedPosts[slicedPosts.length - 1]?._id || "") : null,
       }),
       { status: 200 }

@@ -1,11 +1,21 @@
 import { connectDB } from '@/lib/db';
 import { UserModel } from '@/models/User';
 import { hashPassword, signToken } from '@/lib/auth';
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from '@/lib/rate-limit';
 import { serializePrivateUser } from '@/lib/user-serialization';
 import { createUniqueUsername } from '@/lib/username';
 
 export async function POST(req: Request) {
   try {
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "auth:register"),
+      limit: 6,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("Too many signup attempts. Please wait a bit before trying again.", rateLimit.resetAt);
+    }
+
     const body = await req.json();
     const password = String(body.password || "");
     const name = String(body.name || "").trim();

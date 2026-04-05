@@ -1,4 +1,5 @@
 import { connectDB } from "@/lib/db";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { getRequestUserId } from "@/lib/request-auth";
 import { StoryModel } from "@/models/Story";
 import { UserModel } from "@/models/User";
@@ -8,6 +9,15 @@ export async function POST(req: Request) {
     const userId = await getRequestUserId(req);
     if (!userId) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "stories:create", userId),
+      limit: 12,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("You have reached the story sharing limit for now. Try again later.", rateLimit.resetAt);
     }
 
     await connectDB();

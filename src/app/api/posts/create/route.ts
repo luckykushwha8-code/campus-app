@@ -1,47 +1,8 @@
 import { connectDB } from "@/lib/db";
+import { serializeFeedPost } from "@/lib/post-serialization";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { getRequestUser } from "@/lib/request-auth";
 import { PostModel } from "@/models/Post";
-
-function buildUsername(name?: string, email?: string) {
-  const source = name?.trim() || email?.split("@")[0] || "student";
-  return (
-    source
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "student"
-  );
-}
-
-function serializePost(post: any, author: any) {
-  return {
-    id: String(post._id),
-    content: post.content || "",
-    images: Array.isArray(post.images) ? post.images : [],
-    createdAt: post.createdAt,
-    likesCount: Number(post.likesCount || 0),
-    commentsCount: Number(post.commentsCount || 0),
-    isLiked: false,
-    isOwner: true,
-    isAnonymous: Boolean(post.isAnonymous),
-    author: post.isAnonymous
-      ? {
-          id: "anonymous",
-          name: "Anonymous",
-          username: "anonymous",
-          avatarUrl: "",
-          institution: author?.collegeName || "",
-          isVerified: false,
-        }
-      : {
-          id: String(author._id),
-          name: author.name || "Student",
-          username: buildUsername(author.name, author.email),
-          avatarUrl: author.avatarUrl || "",
-          institution: author.collegeName || "",
-          isVerified: Boolean(author.verified),
-        },
-  };
-}
 
 export async function POST(req: Request) {
   try {
@@ -50,6 +11,15 @@ export async function POST(req: Request) {
 
     if (!user?._id) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "posts:create", String(user._id)),
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("You are posting too quickly. Try again in a few minutes.", rateLimit.resetAt);
     }
 
     const body = await req.json();
@@ -80,7 +50,7 @@ export async function POST(req: Request) {
       reportCount: 0,
     });
 
-    return new Response(JSON.stringify({ ok: true, post: serializePost(post.toObject(), user) }), { status: 201 });
+    return new Response(JSON.stringify({ ok: true, post: serializeFeedPost(post.toObject(), user, String(user._id)) }), { status: 201 });
   } catch {
     return new Response(JSON.stringify({ ok: false, error: "Unable to create your post right now." }), { status: 500 });
   }

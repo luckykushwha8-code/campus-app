@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/db";
 import { createNotification } from "@/lib/notification-service";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { getRequestUser, getRequestUserId } from "@/lib/request-auth";
 import { CommentModel } from "@/models/Comment";
 import { PostModel } from "@/models/Post";
@@ -66,6 +67,15 @@ export async function POST(req: Request) {
 
     if (!user?._id) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "posts:comments", String(user._id)),
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("You are commenting too quickly. Please slow down for a moment.", rateLimit.resetAt);
     }
 
     const body = await req.json();
