@@ -128,15 +128,15 @@ export function CreatePost({ onCreated }: CreatePostProps) {
   }
 
   return (
-    <div className="app-surface p-4 md:p-5">
-      <div className="flex gap-3">
+    <div className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
+      <div className="flex gap-3 px-4 py-4 md:px-5">
         <Avatar alt={user?.name || "User"} src={user?.avatarUrl} className="h-11 w-11" />
         <div className="flex-1">
           <textarea
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            placeholder="Share something useful with your campus"
-            className="min-h-[88px] w-full resize-none bg-transparent text-sm leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+            placeholder="What's happening on campus?"
+            className="min-h-[72px] w-full resize-none bg-transparent text-sm leading-6 text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             rows={4}
           />
 
@@ -159,16 +159,17 @@ export function CreatePost({ onCreated }: CreatePostProps) {
 
           <div className="mt-4 flex flex-col gap-3 border-t border-[var(--border-color)] pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <button className="app-panel rounded-xl px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]" onClick={() => fileInputRef.current?.click()} type="button">
+              <button className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border-color)] px-3 text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]" onClick={() => fileInputRef.current?.click()} type="button">
                 <ImageIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">Photo</span>
               </button>
 
               <div className="relative">
                 <button
                   onClick={() => setShowAudience((value) => !value)}
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-colors",
-                    "app-panel text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    "inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border-color)] px-3 text-sm transition-colors",
+                    "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
                   )}
                   type="button"
                 >
@@ -179,7 +180,7 @@ export function CreatePost({ onCreated }: CreatePostProps) {
                 </button>
 
                 {showAudience ? (
-                  <div className="app-surface absolute left-0 top-full z-10 mt-2 w-40 overflow-hidden">
+                  <div className="absolute left-0 top-full z-10 mt-2 w-40 overflow-hidden rounded-2xl border border-[var(--border-color)] bg-white shadow-[0_14px_32px_rgba(15,23,42,0.08)]">
                     <button onClick={() => { setAudience("campus"); setShowAudience(false); }} className="flex w-full items-center gap-2 px-3 py-3 text-sm hover:bg-[var(--bg-secondary)]" type="button">
                       <Globe className="h-4 w-4" />
                       Campus
@@ -199,7 +200,12 @@ export function CreatePost({ onCreated }: CreatePostProps) {
 
             <button
               disabled={isSubmitting || (!content.trim() && !selectedFile)}
-              className={cn("min-w-[120px] justify-center", isSubmitting || content.trim() || selectedFile ? "button-clean" : "button-outline")}
+              className={cn(
+                "min-w-[110px] justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition",
+                isSubmitting || content.trim() || selectedFile
+                  ? "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]"
+                  : "border border-[var(--border-color)] bg-white text-[var(--text-muted)]"
+              )}
               onClick={handleSubmit}
               type="button"
             >

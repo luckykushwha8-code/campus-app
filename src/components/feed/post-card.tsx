@@ -254,7 +254,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
   }
 
   return (
-    <article className="app-surface overflow-hidden">
+    <article className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
           {authorHref ? (
@@ -287,37 +287,37 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
 
         <div className="flex items-center gap-2">
           {!post.isOwner && post.canReport ? (
-            <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--accent)]" onClick={() => handleReport("post", post.id)} type="button">
+            <button className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)]" onClick={() => handleReport("post", post.id)} type="button">
               {isReporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flag className="h-4 w-4" />}
             </button>
           ) : null}
           {post.isOwner ? (
-            <button className="app-panel flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-red-600" onClick={handleDeletePost} type="button">
+            <button className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--bg-secondary)] hover:text-red-600" onClick={handleDeletePost} type="button">
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </button>
           ) : null}
         </div>
       </div>
 
-      <div className="px-4 pb-4">
-        <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--text-primary)]">{post.content}</p>
-      </div>
-
-      {post.images?.length ? (
-        <div className="relative px-4 pb-4">
-          <div className="overflow-hidden rounded-2xl bg-[var(--bg-secondary)]">
-            <Image src={post.images[0]} alt="" className="h-full w-full object-cover" width={900} height={520} />
-          </div>
+      {post.content ? (
+        <div className="px-4 pb-4">
+          <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--text-primary)]">{post.content}</p>
         </div>
       ) : null}
 
-      <div className="border-t border-[var(--border-color)] px-4 py-4">
-        <div className="flex items-center gap-2">
+      {post.images?.length ? (
+        <div className="relative border-y border-[var(--border-color)] bg-[var(--bg-secondary)]">
+          <Image src={post.images[0]} alt="" className="h-full w-full object-cover" width={900} height={720} />
+        </div>
+      ) : null}
+
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-5">
           <button
             onClick={handleLike}
             disabled={!isAuthenticated || isLiking}
             className={cn(
-              "app-panel flex h-10 min-w-[84px] items-center justify-center gap-2 rounded-xl px-3 transition-colors",
+              "inline-flex items-center justify-center gap-2 text-sm font-medium transition-colors",
               liked ? "text-[var(--accent)]" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             )}
             type="button"
@@ -327,7 +327,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
           </button>
           <button
             onClick={handleToggleComments}
-            className="app-panel flex h-10 min-w-[92px] items-center justify-center gap-2 rounded-xl px-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            className="inline-flex items-center justify-center gap-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
             type="button"
           >
             <MessageCircle className="h-4 w-4" />
@@ -348,7 +348,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
             ) : comments.length ? (
               <div className="mb-3 space-y-3">
                 {comments.map((comment) => (
-                  <div key={comment.id} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 py-3 text-sm">
+                  <div key={comment.id} className="rounded-2xl bg-[var(--bg-secondary)] px-3 py-3 text-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
@@ -388,7 +388,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                 className="input-clean flex-1 text-body"
                 maxLength={500}
               />
-              <button disabled={!commentText.trim() || isSubmittingComment} className="button-clean px-4" onClick={handleSubmitComment} type="button">
+              <button disabled={!commentText.trim() || isSubmittingComment} className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)] disabled:opacity-55" onClick={handleSubmitComment} type="button">
                 {isSubmittingComment ? "Posting..." : "Post"}
               </button>
             </div>
