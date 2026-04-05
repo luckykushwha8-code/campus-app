@@ -3,7 +3,7 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Plus, Trash2, X } from "lucide-react";
+import { Camera, Loader2, Plus, Trash2, X } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { useAppSession } from "@/hooks/use-app-session";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ export function Stories() {
   const [caption, setCaption] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const loadStories = useCallback(async () => {
@@ -75,6 +76,16 @@ export function Stories() {
   const viewedStory = viewerIndex === null ? null : stories[viewerIndex] || null;
   const activeViewerIndex = viewerIndex ?? 0;
   const ownStories = useMemo(() => stories.filter((story) => story.isOwnStory), [stories]);
+  const storyRail = useMemo(() => {
+    const seen = new Set<string>();
+    return stories.filter((story) => {
+      if (seen.has(story.author.id)) {
+        return false;
+      }
+      seen.add(story.author.id);
+      return true;
+    });
+  }, [stories]);
 
   function clearComposer() {
     if (previewUrl) {
@@ -83,6 +94,7 @@ export function Stories() {
     setPreviewUrl("");
     setSelectedFile(null);
     setCaption("");
+    setIsComposerOpen(false);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -211,85 +223,12 @@ export function Stories() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Stories</h2>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">Quick campus updates that disappear after 24 hours.</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Campus moments at the top, just like stories should feel.</p>
           </div>
           <button className="button-outline" onClick={loadStories} type="button">
             Refresh
           </button>
         </div>
-
-        {isAuthenticated ? (
-          <div className="mt-4 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
-            <div className="flex flex-col gap-4 md:flex-row">
-              <button
-                className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-dashed border-[var(--border-color)] bg-white"
-                onClick={() => inputRef.current?.click()}
-                type="button"
-              >
-                {previewUrl ? (
-                  <Image alt="Story preview" className="h-full w-full object-cover" height={80} src={previewUrl} width={80} />
-                ) : (
-                  <div className="flex flex-col items-center gap-1 text-[var(--text-secondary)]">
-                    <Plus className="h-5 w-5" />
-                    <span className="text-xs font-medium">Add story</span>
-                  </div>
-                )}
-              </button>
-
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <Avatar alt={user?.name || "You"} className="h-10 w-10" src={user?.avatarUrl} />
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{user?.name || "You"}</p>
-                    <p className="text-xs text-[var(--text-secondary)]">{ownStories.length ? `${ownStories.length} active stories` : "No active stories yet"}</p>
-                  </div>
-                </div>
-
-                <textarea
-                  className="mt-3 min-h-[88px] w-full resize-none rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
-                  maxLength={160}
-                  onChange={(event) => setCaption(event.target.value)}
-                  placeholder="Add a quick caption (optional)"
-                  rows={3}
-                  value={caption}
-                />
-
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-xs text-[var(--text-muted)]">Image stories only right now. Best size: 1080 x 1920 px.</p>
-                  <div className="flex gap-2">
-                    {selectedFile ? (
-                      <button className="button-outline" onClick={clearComposer} type="button">
-                        Clear
-                      </button>
-                    ) : null}
-                    <button className="button-clean" disabled={isSubmitting || !selectedFile} onClick={handleCreateStory} type="button">
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Sharing...
-                        </>
-                      ) : (
-                        "Share Story"
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <input
-              ref={inputRef}
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleFileChange}
-              type="file"
-            />
-          </div>
-        ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-4 text-sm text-[var(--text-secondary)]">
-            Log in to share campus stories.
-          </div>
-        )}
 
         {status ? (
           <div className="mt-4 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
@@ -307,10 +246,29 @@ export function Stories() {
                 </div>
               ))}
             </div>
-          ) : stories.length ? (
+          ) : storyRail.length || isAuthenticated ? (
             <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
-              {stories.map((story, index) => (
-                <button key={story.id} className="flex shrink-0 flex-col items-center gap-2" onClick={() => setViewerIndex(index)} type="button">
+              {isAuthenticated ? (
+                <button className="flex shrink-0 flex-col items-center gap-2" onClick={() => setIsComposerOpen(true)} type="button">
+                  <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#2563eb_100%)] p-0.5">
+                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
+                      <Avatar alt={user?.name || "You"} className="h-full w-full" src={user?.avatarUrl} />
+                      <span className="absolute bottom-0 right-0 inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--accent)] text-white">
+                        <Plus className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </div>
+                  <span className="max-w-[72px] truncate text-xs text-[var(--text-secondary)]">Your story</span>
+                </button>
+              ) : null}
+
+              {storyRail.map((story) => (
+                <button
+                  key={story.author.id}
+                  className="flex shrink-0 flex-col items-center gap-2"
+                  onClick={() => setViewerIndex(stories.findIndex((item) => item.id === story.id))}
+                  type="button"
+                >
                   <div className={cn("flex h-16 w-16 items-center justify-center rounded-full p-0.5", story.isOwnStory ? "bg-[linear-gradient(135deg,#0f172a_0%,#2563eb_100%)]" : "bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)]")}>
                     <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
                       <Avatar alt={story.author.name} className="h-full w-full" src={story.author.avatarUrl || story.url} />
@@ -327,6 +285,78 @@ export function Stories() {
           )}
         </div>
       </div>
+
+      <input
+        ref={inputRef}
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+        type="file"
+      />
+
+      {isComposerOpen ? (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-[28px] border border-[var(--border-color)] bg-white shadow-[0_30px_90px_rgba(15,23,42,0.28)]">
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">Add to your story</h3>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">Share a campus photo that stays live for 24 hours.</p>
+              </div>
+              <button className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-color)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]" onClick={clearComposer} type="button">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <button
+                className="relative flex min-h-[320px] w-full items-center justify-center overflow-hidden rounded-[24px] border border-dashed border-[var(--border-color)] bg-[var(--bg-secondary)]"
+                onClick={() => inputRef.current?.click()}
+                type="button"
+              >
+                {previewUrl ? (
+                  <Image alt="Story preview" className="h-full w-full object-cover" fill sizes="(max-width: 768px) 100vw, 520px" src={previewUrl} />
+                ) : (
+                  <div className="flex flex-col items-center gap-3 text-[var(--text-secondary)]">
+                    <Camera className="h-8 w-8" />
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Choose a story photo</p>
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">JPG, PNG, or WEBP. Best at 1080 x 1920 px.</p>
+                    </div>
+                  </div>
+                )}
+              </button>
+
+              <textarea
+                className="mt-4 min-h-[96px] w-full resize-none rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+                maxLength={160}
+                onChange={(event) => setCaption(event.target.value)}
+                placeholder="Say something about this moment (optional)"
+                rows={4}
+                value={caption}
+              />
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-[var(--text-muted)]">{ownStories.length ? `${ownStories.length} active stories right now` : "Your friends will see this at the top of their home feed."}</p>
+                <div className="flex gap-2">
+                  <button className="button-outline" onClick={clearComposer} type="button">
+                    Cancel
+                  </button>
+                  <button className="button-clean gap-2" disabled={isSubmitting || !selectedFile} onClick={handleCreateStory} type="button">
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Sharing...
+                      </>
+                    ) : (
+                      "Share Story"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {viewedStory ? (
         <div className="fixed inset-0 z-[70] bg-black/90">
