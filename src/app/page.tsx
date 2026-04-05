@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CreatePost, PostCard } from "@/components/feed";
+import { CreatePost, PostCard, Stories } from "@/components/feed";
 import type { FeedPost } from "@/components/feed/types";
 import { useAppSession } from "@/hooks/use-app-session";
 
@@ -65,6 +65,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <div className="mx-auto max-w-3xl space-y-5">
+        <Stories />
         <CreatePost onCreated={(post) => setPosts((current) => [post, ...current])} />
 
         {error ? (

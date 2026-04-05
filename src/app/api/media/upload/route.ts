@@ -48,6 +48,8 @@ export async function POST(req: Request) {
         ? "campuslink/covers"
         : kind === "post"
           ? "campuslink/posts"
+          : kind === "story"
+            ? "campuslink/stories"
           : "campuslink/avatars";
     const asset = await uploadImageToCloudinary(buffer, folder, file.type);
 
