@@ -77,12 +77,6 @@ export default function HomePage() {
           </div>
         ) : null}
 
-        <div className="flex justify-end">
-          <button className="button-outline" disabled={isRefreshing} onClick={() => loadPosts({ reset: true })} type="button">
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </button>
-        </div>
-
         {isLoading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((item) => (

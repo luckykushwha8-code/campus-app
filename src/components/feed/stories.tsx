@@ -87,6 +87,16 @@ export function Stories() {
     });
   }, [stories]);
 
+  const openStoryAt = useCallback(
+    (storyId: string) => {
+      const index = stories.findIndex((item) => item.id === storyId);
+      if (index >= 0) {
+        setViewerIndex(index);
+      }
+    },
+    [stories]
+  );
+
   function clearComposer() {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -221,60 +231,63 @@ export function Stories() {
     <>
       <div className="app-surface p-4 md:p-5">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">Stories</h2>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">Campus moments at the top, just like stories should feel.</p>
-          </div>
-          <button className="button-outline" onClick={loadStories} type="button">
-            Refresh
-          </button>
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Stories</h2>
+          {storyRail.length ? (
+            <button
+              className="text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
+              onClick={() => openStoryAt(storyRail[0].id)}
+              type="button"
+            >
+              Watch all
+            </button>
+          ) : null}
         </div>
 
         {status ? (
-          <div className="mt-4 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
+          <div className="mt-3 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
             {status}
           </div>
         ) : null}
 
         <div className="mt-4">
           {isLoading ? (
-            <div className="flex gap-3 overflow-x-auto pb-1">
+            <div className="flex gap-4 overflow-x-auto pb-1">
               {[1, 2, 3, 4].map((item) => (
                 <div key={item} className="flex shrink-0 flex-col items-center gap-2">
-                  <div className="h-16 w-16 animate-pulse rounded-full bg-[var(--bg-secondary)]" />
-                  <div className="h-3 w-14 animate-pulse rounded bg-[var(--bg-secondary)]" />
+                  <div className="h-[74px] w-[74px] animate-pulse rounded-full bg-[var(--bg-secondary)]" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-[var(--bg-secondary)]" />
                 </div>
               ))}
             </div>
           ) : storyRail.length || isAuthenticated ? (
-            <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+            <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
               {isAuthenticated ? (
-                <button className="flex shrink-0 flex-col items-center gap-2" onClick={() => setIsComposerOpen(true)} type="button">
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#2563eb_100%)] p-0.5">
-                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
+                <button className="flex w-[84px] shrink-0 flex-col items-center gap-2" onClick={() => setIsComposerOpen(true)} type="button">
+                  <div className="relative flex h-[74px] w-[74px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#d946ef_0%,#f97316_52%,#facc15_100%)] p-[2px]">
+                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white p-[2px]">
                       <Avatar alt={user?.name || "You"} className="h-full w-full" src={user?.avatarUrl} />
-                      <span className="absolute bottom-0 right-0 inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[var(--accent)] text-white">
-                        <Plus className="h-3 w-3" />
+                      <span className="absolute bottom-0 right-0 inline-flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[var(--accent)] text-white shadow-sm">
+                        <Plus className="h-3.5 w-3.5" />
                       </span>
                     </div>
                   </div>
-                  <span className="max-w-[72px] truncate text-xs text-[var(--text-secondary)]">Your story</span>
+                  <span className="max-w-[84px] truncate text-center text-xs font-medium text-[var(--text-primary)]">Your Story</span>
                 </button>
               ) : null}
 
               {storyRail.map((story) => (
                 <button
                   key={story.author.id}
-                  className="flex shrink-0 flex-col items-center gap-2"
-                  onClick={() => setViewerIndex(stories.findIndex((item) => item.id === story.id))}
+                  className="flex w-[84px] shrink-0 flex-col items-center gap-2"
+                  onClick={() => openStoryAt(story.id)}
                   type="button"
                 >
-                  <div className={cn("flex h-16 w-16 items-center justify-center rounded-full p-0.5", story.isOwnStory ? "bg-[linear-gradient(135deg,#0f172a_0%,#2563eb_100%)]" : "bg-[linear-gradient(135deg,#2563eb_0%,#38bdf8_100%)]")}>
-                    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
+                  <div className={cn("flex h-[74px] w-[74px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#d946ef_0%,#f97316_52%,#facc15_100%)] p-[2px]")}>
+                    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white p-[2px]">
                       <Avatar alt={story.author.name} className="h-full w-full" src={story.author.avatarUrl || story.url} />
                     </div>
                   </div>
-                  <span className="max-w-[72px] truncate text-xs text-[var(--text-secondary)]">{story.isOwnStory ? "Your story" : story.author.name}</span>
+                  <span className="max-w-[84px] truncate text-center text-xs font-medium text-[var(--text-primary)]">{story.isOwnStory ? "Your Story" : story.author.name}</span>
                 </button>
               ))}
             </div>
@@ -300,7 +313,7 @@ export function Stories() {
             <div className="flex items-center justify-between border-b border-[var(--border-color)] px-5 py-4">
               <div>
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">Add to your story</h3>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">Share a campus photo that stays live for 24 hours.</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">Share a photo that stays live for 24 hours.</p>
               </div>
               <button className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-color)] text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]" onClick={clearComposer} type="button">
                 <X className="h-4 w-4" />
@@ -336,7 +349,7 @@ export function Stories() {
               />
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-[var(--text-muted)]">{ownStories.length ? `${ownStories.length} active stories right now` : "Your friends will see this at the top of their home feed."}</p>
+                <p className="text-xs text-[var(--text-muted)]">{ownStories.length ? `${ownStories.length} active stories right now` : "Your story appears at the top of the feed."}</p>
                 <div className="flex gap-2">
                   <button className="button-outline" onClick={clearComposer} type="button">
                     Cancel
@@ -385,7 +398,7 @@ export function Stories() {
             </div>
           </div>
 
-          <div className="absolute left-4 right-4 top-16 z-10 mx-auto flex max-w-lg gap-2">
+          <div className="absolute left-4 right-4 top-3 z-10 mx-auto flex max-w-lg gap-2">
             {stories.map((story, index) => (
               <div key={story.id} className="h-1 flex-1 overflow-hidden rounded-full bg-white/20">
                 <div className={cn("h-full bg-white transition-all", index <= activeViewerIndex ? "w-full" : "w-0")} />
@@ -396,6 +409,22 @@ export function Stories() {
           <div className="absolute inset-0 flex items-center justify-center px-4 pb-12 pt-24">
             <div className="relative w-full max-w-lg overflow-hidden rounded-[28px] bg-black shadow-[0_30px_80px_rgba(0,0,0,0.4)]">
               <div className="relative aspect-[9/16] w-full">
+                {activeViewerIndex > 0 ? (
+                  <button
+                    aria-label="Previous story"
+                    className="absolute inset-y-0 left-0 z-10 w-1/3"
+                    onClick={() => setViewerIndex((current) => (current === null ? current : Math.max(current - 1, 0)))}
+                    type="button"
+                  />
+                ) : null}
+                {activeViewerIndex < stories.length - 1 ? (
+                  <button
+                    aria-label="Next story"
+                    className="absolute inset-y-0 right-0 z-10 w-1/3"
+                    onClick={() => setViewerIndex((current) => (current === null ? current : Math.min(current + 1, stories.length - 1)))}
+                    type="button"
+                  />
+                ) : null}
                 <Image
                   alt={viewedStory.caption || `${viewedStory.author.name}'s story`}
                   className="h-full w-full object-cover"
@@ -408,31 +437,11 @@ export function Stories() {
                 {viewedStory.caption ? (
                   <p className="text-sm leading-6 text-white">{viewedStory.caption}</p>
                 ) : (
-                  <p className="text-sm text-white/75">No caption for this story.</p>
+                  <p className="text-sm text-white/75">&nbsp;</p>
                 )}
               </div>
             </div>
           </div>
-
-          {activeViewerIndex > 0 ? (
-            <button
-              className="absolute left-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/20 md:block"
-              onClick={() => setViewerIndex((current) => (current === null ? current : Math.max(current - 1, 0)))}
-              type="button"
-            >
-              Previous
-            </button>
-          ) : null}
-
-          {activeViewerIndex < stories.length - 1 ? (
-            <button
-              className="absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-full bg-white/10 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/20 md:block"
-              onClick={() => setViewerIndex((current) => (current === null ? current : Math.min(current + 1, stories.length - 1)))}
-              type="button"
-            >
-              Next
-            </button>
-          ) : null}
         </div>
       ) : null}
     </>
