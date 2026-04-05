@@ -229,12 +229,12 @@ export function Stories() {
 
   return (
     <>
-      <div className="app-surface p-4 md:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Stories</h2>
+      <div className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
+        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 md:px-5">
+          <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--text-primary)]">Stories</h2>
           {storyRail.length ? (
             <button
-              className="text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
+              className="text-sm font-semibold text-[var(--text-primary)] transition hover:text-[var(--accent)]"
               onClick={() => openStoryAt(storyRail[0].id)}
               type="button"
             >
@@ -244,14 +244,14 @@ export function Stories() {
         </div>
 
         {status ? (
-          <div className="mt-3 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">
+          <div className="mx-4 mb-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm text-[var(--text-secondary)] md:mx-5">
             {status}
           </div>
         ) : null}
 
-        <div className="mt-4">
+        <div className="border-t border-[var(--border-color)] px-4 py-4 md:px-5">
           {isLoading ? (
-            <div className="flex gap-4 overflow-x-auto pb-1">
+            <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-1">
               {[1, 2, 3, 4].map((item) => (
                 <div key={item} className="flex shrink-0 flex-col items-center gap-2">
                   <div className="h-[74px] w-[74px] animate-pulse rounded-full bg-[var(--bg-secondary)]" />
@@ -260,7 +260,7 @@ export function Stories() {
               ))}
             </div>
           ) : storyRail.length || isAuthenticated ? (
-            <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
+            <div className="scrollbar-hide -mx-1 flex gap-4 overflow-x-auto px-1 pb-1">
               {isAuthenticated ? (
                 <button className="flex w-[84px] shrink-0 flex-col items-center gap-2" onClick={() => setIsComposerOpen(true)} type="button">
                   <div className="relative flex h-[74px] w-[74px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#d946ef_0%,#f97316_52%,#facc15_100%)] p-[2px]">
@@ -282,7 +282,7 @@ export function Stories() {
                   onClick={() => openStoryAt(story.id)}
                   type="button"
                 >
-                  <div className={cn("flex h-[74px] w-[74px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#d946ef_0%,#f97316_52%,#facc15_100%)] p-[2px]")}>
+                  <div className={cn("flex h-[74px] w-[74px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#d946ef_0%,#f97316_52%,#facc15_100%)] p-[2px] shadow-[0_8px_18px_rgba(249,115,22,0.18)]")}>
                     <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white p-[2px]">
                       <Avatar alt={story.author.name} className="h-full w-full" src={story.author.avatarUrl || story.url} />
                     </div>
