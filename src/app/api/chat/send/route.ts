@@ -1,7 +1,9 @@
 import { connectDB } from "@/lib/db";
 import { createNotification } from "@/lib/notification-service";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { getRequestUser } from "@/lib/request-auth";
 import { serializeMessage } from "@/lib/chat-serialization";
+import { isValidObjectId } from "@/lib/validation";
 import { ConversationModel, MessageModel } from "@/models/Chat";
 
 export async function POST(req: Request) {
@@ -12,12 +14,25 @@ export async function POST(req: Request) {
       return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "chat:send", String(user._id)),
+      limit: 60,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("You are sending messages too quickly. Please slow down for a moment.", rateLimit.resetAt);
+    }
+
     const body = await req.json();
     const conversationId = String(body.conversationId || "").trim();
     const content = String(body.content || "").trim();
 
     if (!conversationId || !content) {
       return Response.json({ ok: false, error: "Enter a message before sending." }, { status: 400 });
+    }
+
+    if (!isValidObjectId(conversationId)) {
+      return Response.json({ ok: false, error: "Conversation not found." }, { status: 404 });
     }
 
     if (content.length > 1000) {

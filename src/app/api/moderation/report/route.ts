@@ -1,6 +1,8 @@
 import { connectDB } from "@/lib/db";
 import { canUserSubmitReport, createModerationReport } from "@/lib/moderation";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { getRequestUser } from "@/lib/request-auth";
+import { isValidObjectId } from "@/lib/validation";
 import { CommentModel } from "@/models/Comment";
 import { PostModel } from "@/models/Post";
 
@@ -13,6 +15,15 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
     }
 
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "moderation:report", String(user._id)),
+      limit: 10,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("Too many reports in a short time. Please slow down.", rateLimit.resetAt);
+    }
+
     const body = await req.json();
     const targetType = body.targetType === "comment" ? "comment" : "post";
     const targetId = String(body.targetId || "").trim();
@@ -20,6 +31,10 @@ export async function POST(req: Request) {
 
     if (!targetId || !reason) {
       return new Response(JSON.stringify({ ok: false, error: "Choose a reason before reporting." }), { status: 400 });
+    }
+
+    if (!isValidObjectId(targetId)) {
+      return new Response(JSON.stringify({ ok: false, error: "Content not found." }), { status: 404 });
     }
 
     const canReport = await canUserSubmitReport(String(user._id));

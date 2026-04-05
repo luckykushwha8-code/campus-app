@@ -1,5 +1,6 @@
 import { verifyToken } from "@/lib/auth";
 import { getBearerToken, getServerSession } from "@/lib/server-auth";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { isMediaStorageConfigured, uploadImageToCloudinary } from "@/lib/media-storage";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -14,6 +15,15 @@ export async function POST(req: Request) {
 
     if (!userId) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
+    }
+
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "media:upload", userId),
+      limit: 20,
+      windowMs: 60 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("Too many uploads in a short time. Please wait a little and try again.", rateLimit.resetAt);
     }
 
     if (!isMediaStorageConfigured()) {

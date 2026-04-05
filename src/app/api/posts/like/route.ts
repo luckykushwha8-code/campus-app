@@ -1,6 +1,8 @@
 import { connectDB } from "@/lib/db";
 import { createNotification } from "@/lib/notification-service";
+import { checkRateLimit, createRateLimitResponse, getRateLimitKey } from "@/lib/rate-limit";
 import { getRequestUser } from "@/lib/request-auth";
+import { isValidObjectId } from "@/lib/validation";
 import { PostModel } from "@/models/Post";
 
 export async function POST(req: Request) {
@@ -12,9 +14,22 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), { status: 401 });
     }
 
+    const rateLimit = checkRateLimit({
+      key: getRateLimitKey(req, "posts:like", String(user._id)),
+      limit: 80,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse("You are liking content too quickly. Please pause for a moment.", rateLimit.resetAt);
+    }
+
     const { postId } = await req.json();
     if (!postId) {
       return new Response(JSON.stringify({ ok: false, error: "Missing post." }), { status: 400 });
+    }
+
+    if (!isValidObjectId(String(postId))) {
+      return new Response(JSON.stringify({ ok: false, error: "Post not found." }), { status: 404 });
     }
 
     const post = await PostModel.findById(postId);
