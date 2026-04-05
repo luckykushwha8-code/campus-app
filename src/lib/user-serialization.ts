@@ -10,6 +10,7 @@ export function serializePrivateUser(user: any) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_+|_+$/g, "") || "student",
+    role: user.role === "admin" ? "admin" : "student",
     bio: user.bio || "",
     collegeName: user.collegeName || "",
     collegeId: user.collegeId || "",

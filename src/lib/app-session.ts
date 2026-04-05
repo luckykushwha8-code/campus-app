@@ -3,6 +3,7 @@ export interface AppUser {
   email: string;
   name: string;
   username: string;
+  role?: "student" | "admin";
   bio?: string;
   collegeName?: string;
   collegeId?: string;
@@ -83,6 +84,7 @@ export function normalizeUser(user: Partial<AppUser> & { id: string; email: stri
     email: user.email,
     name: user.name || user.email.split("@")[0],
     username: user.username || buildUsername(user.email, user.name),
+    role: user.role === "admin" ? "admin" : "student",
     bio: user.bio || "",
     collegeName: user.collegeName || "",
     collegeId: user.collegeId || "",

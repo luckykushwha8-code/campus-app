@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Home, MessageSquare, Users, Calendar, GraduationCap, FileText, Flame } from "lucide-react";
+import { Home, MessageSquare, Users, Calendar, GraduationCap, FileText, Flame, Shield } from "lucide-react";
+import { useAppSession } from "@/hooks/use-app-session";
 
 const quickLinks = [
   { href: "/", icon: Home, label: "Feed" },
@@ -25,6 +26,7 @@ const trendingTopics = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAppSession();
 
   return (
     <aside className="hidden w-[268px] shrink-0 lg:block">
@@ -71,6 +73,24 @@ export function Sidebar() {
             })}
           </div>
         </section>
+
+        {user?.role === "admin" ? (
+          <section className="app-surface p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Admin</p>
+            <Link
+              href="/moderation"
+              className={cn(
+                "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm transition-colors",
+                pathname === "/moderation"
+                  ? "bg-[var(--bg-secondary)] font-semibold text-[var(--accent)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+              )}
+            >
+              <Shield className="h-4 w-4 flex-shrink-0" />
+              <span>Moderation</span>
+            </Link>
+          </section>
+        ) : null}
 
         <section className="app-surface p-4">
           <div className="mb-3 flex items-center gap-2">
