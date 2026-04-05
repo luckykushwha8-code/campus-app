@@ -7,7 +7,8 @@ const publicRoutes = new Set(["/login", "/signup", "/forgot-password", "/reset-p
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(AUTH_COOKIE)?.value;
-  const isPublicRoute = publicRoutes.has(pathname);
+  const isPublicProfileRoute = /^\/profile\/[^/]+$/.test(pathname);
+  const isPublicRoute = publicRoutes.has(pathname) || isPublicProfileRoute;
 
   if (token && isPublicRoute) {
     return NextResponse.redirect(new URL("/", request.url));

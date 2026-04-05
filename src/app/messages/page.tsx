@@ -14,6 +14,7 @@ type Conversation = {
   id: string;
   name: string;
   avatar?: string;
+  profileId?: string;
   lastMessage: string;
   time: string;
   unread: number;
@@ -27,6 +28,7 @@ type Message = {
   senderId: string;
   senderName: string;
   senderAvatar?: string;
+  profileId?: string;
   content: string;
   createdAt: string;
   isOwn: boolean;
@@ -292,7 +294,13 @@ export default function MessagesPage() {
                 onClick={() => setSelectedConversationId(conversation.id)}
                 type="button"
               >
-                <Avatar alt={conversation.name} src={conversation.avatar} className="h-10 w-10" />
+                {conversation.profileId ? (
+                  <Link href={`/profile/${conversation.profileId}`} onClick={(event) => event.stopPropagation()}>
+                    <Avatar alt={conversation.name} src={conversation.avatar} className="h-10 w-10" />
+                  </Link>
+                ) : (
+                  <Avatar alt={conversation.name} src={conversation.avatar} className="h-10 w-10" />
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
                     <span className="truncate text-body font-medium text-[var(--text-primary)]">{conversation.name}</span>
@@ -323,9 +331,23 @@ export default function MessagesPage() {
           <>
             <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-white p-4">
               <div className="flex items-center gap-3">
-                <Avatar alt={selectedConversation.name} src={selectedConversation.avatar} className="h-10 w-10" />
+                {selectedConversation.profileId ? (
+                  <Link href={`/profile/${selectedConversation.profileId}`}>
+                    <Avatar alt={selectedConversation.name} src={selectedConversation.avatar} className="h-10 w-10" />
+                  </Link>
+                ) : (
+                  <Avatar alt={selectedConversation.name} src={selectedConversation.avatar} className="h-10 w-10" />
+                )}
                 <div>
-                  <h2 className="text-body font-medium text-[var(--text-primary)]">{selectedConversation.name}</h2>
+                  <h2 className="text-body font-medium text-[var(--text-primary)]">
+                    {selectedConversation.profileId ? (
+                      <Link className="hover:text-[var(--accent)]" href={`/profile/${selectedConversation.profileId}`}>
+                        {selectedConversation.name}
+                      </Link>
+                    ) : (
+                      selectedConversation.name
+                    )}
+                  </h2>
                   <p className="text-caption text-[var(--text-muted)]">
                     {selectedConversation.subtitle || (selectedConversation.isGroup ? "Group conversation" : "Direct conversation")}
                   </p>
@@ -355,7 +377,15 @@ export default function MessagesPage() {
                           }`}
                         >
                           {!message.isOwn ? (
-                            <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">{message.senderName}</p>
+                            <p className="mb-1 text-xs font-semibold text-[var(--text-muted)]">
+                              {message.profileId ? (
+                                <Link className="hover:text-[var(--accent)]" href={`/profile/${message.profileId}`}>
+                                  {message.senderName}
+                                </Link>
+                              ) : (
+                                message.senderName
+                              )}
+                            </p>
                           ) : null}
                           <p className="whitespace-pre-wrap text-sm">{message.content}</p>
                           <p className={`mt-2 text-caption ${message.isOwn ? "text-[var(--accent)]" : "text-[var(--text-secondary)]"}`}>

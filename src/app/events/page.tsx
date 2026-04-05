@@ -15,7 +15,7 @@ type EventItem = {
   image?: string;
   location: string;
   startDate: string;
-  organizer: { name: string; avatar?: string };
+  organizer: { id?: string; name: string; avatar?: string };
   attendees: number;
   isRegistered: boolean;
   isOwner?: boolean;

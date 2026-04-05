@@ -8,6 +8,7 @@ export function serializeEvent(event: any, currentUserId?: string | null) {
     location: event.location,
     startDate: new Date(event.startDate).toISOString(),
     organizer: {
+      id: String(event.creatorId || ""),
       name: event.organizerName,
       avatar: event.creatorAvatarUrl || "",
     },

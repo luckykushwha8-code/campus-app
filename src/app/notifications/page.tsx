@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -145,7 +146,13 @@ export default function NotificationsPage() {
                   type="button"
                 >
                   <div className="relative">
-                    <Avatar alt={notif.actor?.name || "Notification"} src={notif.actor?.avatarUrl} className="h-10 w-10" />
+                    {notif.actor?.id ? (
+                      <Link href={`/profile/${notif.actor.id}`} onClick={(event) => event.stopPropagation()}>
+                        <Avatar alt={notif.actor?.name || "Notification"} src={notif.actor?.avatarUrl} className="h-10 w-10" />
+                      </Link>
+                    ) : (
+                      <Avatar alt={notif.actor?.name || "Notification"} src={notif.actor?.avatarUrl} className="h-10 w-10" />
+                    )}
                     <div className="absolute -bottom-1 -right-1 rounded-full bg-white p-1">
                       <Icon className="h-3 w-3 text-[var(--text-muted)]" />
                     </div>
@@ -153,7 +160,15 @@ export default function NotificationsPage() {
                   <div className="flex-1">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-body font-medium text-[var(--text-primary)]">{notif.title}</p>
+                        <p className="text-body font-medium text-[var(--text-primary)]">
+                          {notif.actor?.id ? (
+                            <Link className="hover:text-[var(--accent)]" href={`/profile/${notif.actor.id}`} onClick={(event) => event.stopPropagation()}>
+                              {notif.title}
+                            </Link>
+                          ) : (
+                            notif.title
+                          )}
+                        </p>
                         <p className="mt-1 text-sm text-[var(--text-secondary)]">{notif.body}</p>
                         <p className="mt-2 text-caption text-[var(--text-muted)]">
                           {formatRelative(new Date(notif.createdAt), new Date())}

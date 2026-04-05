@@ -14,7 +14,7 @@ interface EventCardProps {
     image?: string;
     location?: string;
     startDate: string;
-    organizer: { name: string; avatar?: string };
+    organizer: { id?: string; name: string; avatar?: string };
     attendees: number;
     isRegistered: boolean;
     isOwner?: boolean;
@@ -26,6 +26,8 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onToggleRegistration, onDelete, isSaving, isDeleting }: EventCardProps) {
+  const organizerHref = event.organizer.id ? `/profile/${event.organizer.id}` : null;
+
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
       {event.image && (
@@ -56,8 +58,17 @@ export function EventCard({ event, onToggleRegistration, onDelete, isSaving, isD
 
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Avatar alt={event.organizer.name} src={event.organizer.avatar} />
-            <span className="text-sm text-gray-600">{event.organizer.name}</span>
+            {organizerHref ? (
+              <Link className="flex items-center gap-2" href={organizerHref}>
+                <Avatar alt={event.organizer.name} src={event.organizer.avatar} />
+                <span className="text-sm text-gray-600 hover:text-[var(--accent)]">{event.organizer.name}</span>
+              </Link>
+            ) : (
+              <>
+                <Avatar alt={event.organizer.name} src={event.organizer.avatar} />
+                <span className="text-sm text-gray-600">{event.organizer.name}</span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/events/${event.id}`} className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">
