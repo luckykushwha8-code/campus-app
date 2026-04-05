@@ -4,11 +4,14 @@ export interface IUser extends Document {
   email: string;
   passwordHash?: string;
   name?: string;
+  username?: string;
   bio?: string;
   collegeId?: string;
   collegeName?: string;
   avatarUrl?: string;
+  avatarPublicId?: string;
   coverUrl?: string;
+  coverPublicId?: string;
   settings?: {
     pushNotifications: boolean;
     roomAlerts: boolean;
@@ -33,11 +36,14 @@ const UserSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String },
   name: { type: String },
+  username: { type: String, index: true },
   bio: { type: String },
   collegeId: { type: String, index: true },
   collegeName: { type: String },
   avatarUrl: { type: String },
+  avatarPublicId: { type: String },
   coverUrl: { type: String },
+  coverPublicId: { type: String },
   settings: {
     pushNotifications: { type: Boolean, default: true },
     roomAlerts: { type: Boolean, default: true },

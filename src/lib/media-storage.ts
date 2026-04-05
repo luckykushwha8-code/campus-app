@@ -41,6 +41,19 @@ export async function uploadImageToCloudinary(fileBuffer: Buffer, folder: string
   };
 }
 
+export async function deleteMediaFromCloudinary(publicId?: string | null) {
+  if (!isConfigured || !publicId?.trim()) {
+    return false;
+  }
+
+  const result = await cloudinary.uploader.destroy(publicId.trim(), {
+    resource_type: "image",
+    invalidate: true,
+  });
+
+  return result.result === "ok" || result.result === "not found";
+}
+
 export async function uploadDocumentToCloudinary(fileBuffer: Buffer, folder: string, fileName: string, mimeType: string) {
   if (!isConfigured) {
     throw new Error("MEDIA_STORAGE_NOT_CONFIGURED");

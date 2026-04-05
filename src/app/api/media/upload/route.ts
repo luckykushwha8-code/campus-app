@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      return new Response(JSON.stringify({ ok: false, error: "Please upload an image smaller than 2MB." }), { status: 400 });
+      return new Response(JSON.stringify({ ok: false, error: "Please upload an image smaller than 5MB." }), { status: 400 });
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

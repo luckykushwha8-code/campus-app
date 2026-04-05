@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { Heart, MessageCircle, BadgeCheck, Trash2, Loader2, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
-  const { token, isAuthenticated } = useAppSession();
+  const { token, isAuthenticated, user } = useAppSession();
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likesCount);
   const [commentsCount, setCommentsCount] = useState(post.commentsCount);
@@ -58,6 +59,13 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
       setCommentsLoading(false);
     }
   }
+
+  const authorHref =
+    !post.isAnonymous && post.author.id
+      ? post.author.id === user?.id
+        ? "/profile"
+        : `/profile/${post.author.id}`
+      : null;
 
   async function handleToggleComments() {
     const next = !showComments;
@@ -249,12 +257,24 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
     <article className="app-surface overflow-hidden">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
-          <Avatar alt={post.isAnonymous ? "Anonymous" : post.author.name} src={post.isAnonymous ? "" : post.author.avatarUrl} className="h-11 w-11" />
+          {authorHref ? (
+            <Link href={authorHref}>
+              <Avatar alt={post.author.name} src={post.author.avatarUrl} className="h-11 w-11" />
+            </Link>
+          ) : (
+            <Avatar alt={post.isAnonymous ? "Anonymous" : post.author.name} src={post.isAnonymous ? "" : post.author.avatarUrl} className="h-11 w-11" />
+          )}
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-[var(--text-primary)]">
-                {post.isAnonymous ? "Anonymous" : post.author.name}
-              </span>
+              {authorHref ? (
+                <Link className="text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]" href={authorHref}>
+                  {post.author.name}
+                </Link>
+              ) : (
+                <span className="text-sm font-semibold text-[var(--text-primary)]">
+                  {post.isAnonymous ? "Anonymous" : post.author.name}
+                </span>
+              )}
               {post.author.isVerified && !post.isAnonymous ? <BadgeCheck className="h-3.5 w-3.5 text-[var(--accent)]" /> : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
@@ -332,7 +352,9 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-[var(--text-primary)]">{comment.author.name}</span>
+                          <Link className="font-medium text-[var(--text-primary)] hover:text-[var(--accent)]" href={comment.author.id === user?.id ? "/profile" : `/profile/${comment.author.id}`}>
+                            {comment.author.name}
+                          </Link>
                           <span className="text-xs text-[var(--text-muted)]">@{comment.author.username}</span>
                           <span className="text-xs text-[var(--text-muted)]">{formatDate(comment.createdAt)}</span>
                         </div>

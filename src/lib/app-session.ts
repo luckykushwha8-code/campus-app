@@ -1,3 +1,5 @@
+import { buildUsername as makeUsername } from "@/lib/username";
+
 export interface AppUser {
   id: string;
   email: string;
@@ -71,11 +73,7 @@ function syncSessionCookie(token?: string | null) {
 }
 
 export function buildUsername(email: string, fallbackName?: string) {
-  const source = fallbackName?.trim() || email.split("@")[0] || "student";
-  return source
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "student";
+  return makeUsername(fallbackName, email);
 }
 
 export function normalizeUser(user: Partial<AppUser> & { id: string; email: string }) {
@@ -83,7 +81,7 @@ export function normalizeUser(user: Partial<AppUser> & { id: string; email: stri
     id: user.id,
     email: user.email,
     name: user.name || user.email.split("@")[0],
-    username: user.username || buildUsername(user.email, user.name),
+    username: user.username || makeUsername(user.name, user.email),
     role: user.role === "admin" ? "admin" : "student",
     bio: user.bio || "",
     collegeName: user.collegeName || "",

@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import { UserModel } from '@/models/User';
 import { hashPassword, signToken } from '@/lib/auth';
 import { serializePrivateUser } from '@/lib/user-serialization';
+import { createUniqueUsername } from '@/lib/username';
 
 export async function POST(req: Request) {
   try {
@@ -27,8 +28,13 @@ export async function POST(req: Request) {
     if (existing) {
       return new Response(JSON.stringify({ ok: false, error: 'An account with this email already exists.' }), { status: 400 });
     }
+    const username = await createUniqueUsername({
+      desired: name,
+      email,
+      isTaken: async (candidate) => Boolean(await UserModel.exists({ username: candidate })),
+    });
     const hash = await hashPassword(password);
-    const user = await UserModel.create({ email, passwordHash: hash, name, collegeId, collegeName, role: 'student', verified: false });
+    const user = await UserModel.create({ email, passwordHash: hash, name, username, collegeId, collegeName, role: 'student', verified: false });
     const token = signToken({ userId: user._id });
     return new Response(JSON.stringify({
       ok: true,
