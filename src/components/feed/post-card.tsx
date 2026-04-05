@@ -255,14 +255,14 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
 
   return (
     <article className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.03)]">
-      <div className="flex items-center justify-between px-4 py-4">
+      <div className="flex items-center justify-between px-4 py-3.5">
         <div className="flex items-center gap-3">
           {authorHref ? (
             <Link href={authorHref}>
-              <Avatar alt={post.author.name} src={post.author.avatarUrl} className="h-11 w-11" />
+              <Avatar alt={post.author.name} src={post.author.avatarUrl} className="h-10 w-10" />
             </Link>
           ) : (
-            <Avatar alt={post.isAnonymous ? "Anonymous" : post.author.name} src={post.isAnonymous ? "" : post.author.avatarUrl} className="h-11 w-11" />
+            <Avatar alt={post.isAnonymous ? "Anonymous" : post.author.name} src={post.isAnonymous ? "" : post.author.avatarUrl} className="h-10 w-10" />
           )}
           <div>
             <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
               )}
               {post.author.isVerified && !post.isAnonymous ? <BadgeCheck className="h-3.5 w-3.5 text-[var(--accent)]" /> : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)]">
               {!post.isAnonymous ? <span>@{post.author.username}</span> : null}
               {post.author.institution ? <span>{post.author.institution}</span> : null}
               <span>{formatDate(post.createdAt)}</span>
@@ -287,12 +287,12 @@ export function PostCard({ post, onDeleted, onUpdated }: PostCardProps) {
 
         <div className="flex items-center gap-2">
           {!post.isOwner && post.canReport ? (
-            <button className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)]" onClick={() => handleReport("post", post.id)} type="button">
+            <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--bg-secondary)] hover:text-[var(--accent)]" onClick={() => handleReport("post", post.id)} type="button">
               {isReporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flag className="h-4 w-4" />}
             </button>
           ) : null}
           {post.isOwner ? (
-            <button className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--bg-secondary)] hover:text-red-600" onClick={handleDeletePost} type="button">
+            <button className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition hover:bg-[var(--bg-secondary)] hover:text-red-600" onClick={handleDeletePost} type="button">
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </button>
           ) : null}

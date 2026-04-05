@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { useAppSession } from "@/hooks/use-app-session";
-import { Home, Compass, Plus, MessageSquare, User, Search, FileText, CalendarDays, Bell, Sparkles } from "lucide-react";
+import { Home, Compass, Plus, MessageSquare, User, Search, FileText, CalendarDays, Bell } from "lucide-react";
 
 const mobileNavItems = [
   { href: "/", icon: Home, label: "Home" },
@@ -53,32 +53,26 @@ export function Navbar() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/92 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/96 backdrop-blur-xl">
         <div className="app-frame flex h-16 items-center gap-3 px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb_0%,#0f172a_100%)] text-white">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-[0.14em] text-[var(--accent)]">CAMPUSLINK</p>
-              <p className="text-xs text-[var(--text-muted)]">Student-first social</p>
-            </div>
+          <Link href="/" className="text-[1.35rem] font-semibold tracking-[-0.04em] text-[var(--text-primary)]">
+            CampusLink
           </Link>
 
-          <Link href="/explore" className="app-panel ml-auto hidden min-w-0 items-center gap-3 px-4 py-3 text-sm text-[var(--text-secondary)] md:flex md:w-full md:max-w-md">
+          <Link href="/explore" className="ml-auto hidden min-w-0 items-center gap-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-2.5 text-sm text-[var(--text-secondary)] md:flex md:w-full md:max-w-md">
             <Search className="h-4 w-4 flex-shrink-0 text-[var(--text-muted)]" />
-            <span className="truncate">Search students, clubs, rooms, and events</span>
+            <span className="truncate">Search</span>
           </Link>
 
           <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <Link href="/explore" className="app-panel flex h-11 w-11 items-center justify-center text-[var(--text-secondary)] md:hidden">
+            <Link href="/explore" className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] md:hidden">
               <Search className="h-4 w-4" />
             </Link>
-            <button className="button-clean hidden md:inline-flex" onClick={() => setShowCreate(true)} type="button">
+            <button className="hidden rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-hover)] md:inline-flex md:items-center md:gap-2" onClick={() => setShowCreate(true)} type="button">
               <Plus className="h-4 w-4" />
               Create
             </button>
-            <Link href="/notifications" className="app-panel relative flex h-11 w-11 items-center justify-center text-[var(--text-secondary)]">
+            <Link href="/notifications" className="relative flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)]">
               <Bell className="h-4 w-4" />
               {unreadCount ? (
                 <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold text-white">
@@ -87,7 +81,7 @@ export function Navbar() {
               ) : null}
             </Link>
             <Link href="/profile">
-              <Avatar alt={user?.name || "User"} src={user?.avatarUrl} className="h-11 w-11 border border-[var(--border-color)]" />
+              <Avatar alt={user?.name || "User"} src={user?.avatarUrl} className="h-10 w-10 border border-[var(--border-color)]" />
             </Link>
           </div>
         </div>
